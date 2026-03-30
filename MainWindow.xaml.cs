@@ -160,17 +160,17 @@ namespace StarCitizenOverLay
         {
             if (_isInteractive)
             {
-                InteractionModeText.Text = "Interactive";
+                InteractionModeText.Text = "可交互";
                 InteractionDescriptionText.Text = _hotKeyRegistered
-                    ? "Window accepts mouse input. Drag the title area to move the overlay."
-                    : "Window accepts mouse input. Hotkey registration failed, so toggle is unavailable.";
+                    ? "窗口当前可接收鼠标输入。拖动顶部标题区域可以移动悬浮层。"
+                    : "窗口当前可接收鼠标输入，但快捷键注册失败，暂时无法切换模式。";
             }
             else
             {
-                InteractionModeText.Text = "Click-Through";
+                InteractionModeText.Text = "鼠标穿透";
                 InteractionDescriptionText.Text = _hotKeyRegistered
-                    ? "Mouse clicks pass through the overlay. Press Alt + Shift + S to interact again."
-                    : "Mouse clicks pass through the overlay. Hotkey registration failed.";
+                    ? "鼠标点击会直接穿过悬浮层。按 Alt + Shift + S 可以恢复交互。"
+                    : "鼠标点击会直接穿过悬浮层，但快捷键注册失败。";
             }
         }
 
@@ -181,18 +181,18 @@ namespace StarCitizenOverLay
             ConfigStatusText.Visibility = hasConfig ? Visibility.Collapsed : Visibility.Visible;
             SearchQueryTextBox.IsEnabled = hasConfig && !_isSearching;
             SearchButton.IsEnabled = hasConfig && !_isSearching;
-            SearchButton.Content = _isSearching ? "Searching..." : "Search";
+            SearchButton.Content = _isSearching ? "搜索中..." : "搜索";
 
             if (hasConfig)
             {
-                SearchStatusText.Text = "Ready";
-                SearchSummaryText.Text = "No search yet.";
+                SearchStatusText.Text = "就绪";
+                SearchSummaryText.Text = "还没有执行搜索。";
                 return;
             }
 
-            ConfigStatusText.Text = "Missing API_BASE_URL in .env. Update the root .env file, rebuild, and run again.";
-            SearchStatusText.Text = "Search unavailable.";
-            SearchSummaryText.Text = "Configuration required.";
+            ConfigStatusText.Text = "缺少 .env 中的 API_BASE_URL。请更新项目根目录 .env 后重新生成并运行。";
+            SearchStatusText.Text = "当前无法搜索。";
+            SearchSummaryText.Text = "需要先完成配置。";
             SearchResults.Clear();
         }
 
@@ -212,8 +212,8 @@ namespace StarCitizenOverLay
             var query = SearchQueryTextBox.Text.Trim();
             if (string.IsNullOrWhiteSpace(query))
             {
-                SearchStatusText.Text = "Enter a keyword before searching.";
-                SearchSummaryText.Text = "Waiting for input.";
+                SearchStatusText.Text = "请先输入搜索关键词。";
+                SearchSummaryText.Text = "等待输入。";
                 SearchResults.Clear();
                 return;
             }
@@ -221,9 +221,9 @@ namespace StarCitizenOverLay
             _isSearching = true;
             SearchQueryTextBox.IsEnabled = false;
             SearchButton.IsEnabled = false;
-            SearchButton.Content = "Searching...";
-            SearchStatusText.Text = $"Searching \"{query}\"...";
-            SearchSummaryText.Text = "Waiting for response.";
+            SearchButton.Content = "搜索中...";
+            SearchStatusText.Text = $"正在搜索“{query}”...";
+            SearchSummaryText.Text = "等待服务响应。";
             SearchResults.Clear();
 
             try
@@ -233,8 +233,8 @@ namespace StarCitizenOverLay
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    SearchStatusText.Text = $"Request failed: {(int)response.StatusCode} {response.ReasonPhrase}";
-                    SearchSummaryText.Text = "Server did not return a successful search result.";
+                    SearchStatusText.Text = $"请求失败：{(int)response.StatusCode} {response.ReasonPhrase}";
+                    SearchSummaryText.Text = "服务端没有返回成功的搜索结果。";
                     return;
                 }
 
@@ -247,22 +247,22 @@ namespace StarCitizenOverLay
                     SearchResults.Add(new SearchResultViewModel(result));
                 }
 
-                SearchStatusText.Text = "Search complete.";
+                SearchStatusText.Text = "搜索完成。";
 
                 if (payload is null || payload.Total == 0 || SearchResults.Count == 0)
                 {
-                    SearchSummaryText.Text = "No matching items.";
+                    SearchSummaryText.Text = "没有找到匹配物品。";
                     return;
                 }
 
                 SearchSummaryText.Text = payload.Total > SearchResults.Count
-                    ? $"Showing first {SearchResults.Count} of {payload.Total} results."
-                    : $"{SearchResults.Count} result(s).";
+                    ? $"当前显示前 {SearchResults.Count} 条，共 {payload.Total} 条结果。"
+                    : $"共找到 {SearchResults.Count} 条结果。";
             }
             catch (Exception ex)
             {
-                SearchStatusText.Text = $"Search failed: {ex.Message}";
-                SearchSummaryText.Text = "Check API_BASE_URL or server availability.";
+                SearchStatusText.Text = $"搜索失败：{ex.Message}";
+                SearchSummaryText.Text = "请检查 API_BASE_URL 或服务是否可访问。";
             }
             finally
             {
@@ -354,9 +354,9 @@ namespace StarCitizenOverLay
         {
             public SearchResultViewModel(ItemSearchResult result)
             {
-                Name = string.IsNullOrWhiteSpace(result.Name) ? "(Unnamed item)" : result.Name;
-                NameChsDisplay = string.IsNullOrWhiteSpace(result.NameChs) ? "No Chinese name" : result.NameChs;
-                CategoryLabel = string.IsNullOrWhiteSpace(result.CategoryLabel) ? "Unknown" : result.CategoryLabel;
+                Name = string.IsNullOrWhiteSpace(result.Name) ? "（未命名物品）" : result.Name;
+                NameChsDisplay = string.IsNullOrWhiteSpace(result.NameChs) ? "暂无中文名" : result.NameChs;
+                CategoryLabel = string.IsNullOrWhiteSpace(result.CategoryLabel) ? "未知分类" : result.CategoryLabel;
 
                 var metaParts = new List<string>();
                 if (!string.IsNullOrWhiteSpace(result.Size))
@@ -374,7 +374,7 @@ namespace StarCitizenOverLay
                     metaParts.Add(result.Rank);
                 }
 
-                MetaLine = metaParts.Count > 0 ? string.Join(" / ", metaParts) : "No extra metadata";
+                MetaLine = metaParts.Count > 0 ? string.Join(" / ", metaParts) : "暂无额外属性";
             }
 
             public string Name { get; }
