@@ -8,4 +8,13 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Include=".env" />
+    <None Include=".env.template" />
+  </ItemGroup>
+
+  <Target Name="CopyLocalEnvFile" AfterTargets="Build" Condition="Exists('.env')">
+    <Copy SourceFiles=".env" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>
