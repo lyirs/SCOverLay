@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -37,9 +38,13 @@ namespace StarCitizenOverLay
         private const uint SwpNoMove = 0x0002;
         private const uint SwpNoZOrder = 0x0004;
         private const uint SwpFrameChanged = 0x0020;
+        private const uint MonitorDefaultToNearest = 2;
+        private const int GwOwner = 4;
+        private static readonly string[] GameProcessNames = ["StarCitizen", "StarCitizen_Launcher"];
 
         private System.IntPtr _windowHandle;
         private System.Windows.Interop.HwndSource? _hwndSource;
+        private readonly System.Windows.Threading.DispatcherTimer _monitorSyncTimer;
         private bool _isInteractive = true;
         private bool _isOverlayVisible = true;
         private bool _interactionHotKeyRegistered;
@@ -59,6 +64,11 @@ namespace StarCitizenOverLay
         {
             InitializeComponent();
             DataContext = this;
+            _monitorSyncTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(2)
+            };
+            _monitorSyncTimer.Tick += MonitorSyncTimer_Tick;
             SourceInitialized += MainWindow_SourceInitialized;
             Loaded += MainWindow_Loaded;
             Closed += MainWindow_Closed;
@@ -66,10 +76,8 @@ namespace StarCitizenOverLay
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            Left = SystemParameters.WorkArea.Left;
-            Top = SystemParameters.WorkArea.Top;
-            Width = SystemParameters.WorkArea.Width;
-            Height = SystemParameters.WorkArea.Height;
+            UpdateOverlayTargetBounds();
+            _monitorSyncTimer.Start();
 
             _apiBaseUrl = LoadApiBaseUrl();
 
@@ -101,6 +109,8 @@ namespace StarCitizenOverLay
 
         private void MainWindow_Closed(object? sender, System.EventArgs e)
         {
+            _monitorSyncTimer.Stop();
+
             if (_interactionHotKeyRegistered)
             {
                 UnregisterHotKey(_windowHandle, InteractionHotKeyId);
@@ -112,6 +122,16 @@ namespace StarCitizenOverLay
             }
 
             _hwndSource?.RemoveHook(WndProc);
+        }
+
+        private void MonitorSyncTimer_Tick(object? sender, EventArgs e)
+        {
+            if (!_isOverlayVisible)
+            {
+                return;
+            }
+
+            UpdateOverlayTargetBounds();
         }
 
         private void OverlayPanel_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -152,10 +172,126 @@ namespace StarCitizenOverLay
                 return;
             }
 
+            UpdateOverlayTargetBounds();
             Show();
             Topmost = true;
             _isOverlayVisible = true;
             ApplyInteractionMode();
+        }
+
+        private void UpdateOverlayTargetBounds()
+        {
+            var targetBounds = TryGetGameMonitorBounds(out var gameMonitorBounds)
+                ? gameMonitorBounds
+                : GetPrimaryWorkAreaBounds();
+
+            if (Math.Abs(Left - targetBounds.Left) < 0.1 &&
+                Math.Abs(Top - targetBounds.Top) < 0.1 &&
+                Math.Abs(Width - targetBounds.Width) < 0.1 &&
+                Math.Abs(Height - targetBounds.Height) < 0.1)
+            {
+                return;
+            }
+
+            Left = targetBounds.Left;
+            Top = targetBounds.Top;
+            Width = targetBounds.Width;
+            Height = targetBounds.Height;
+        }
+
+        private static OverlayBounds GetPrimaryWorkAreaBounds()
+        {
+            var workArea = SystemParameters.WorkArea;
+            return new OverlayBounds(workArea.Left, workArea.Top, workArea.Width, workArea.Height);
+        }
+
+        private bool TryGetGameMonitorBounds(out OverlayBounds bounds)
+        {
+            bounds = default;
+
+            var gameWindowHandle = FindGameWindowHandle();
+            if (gameWindowHandle == System.IntPtr.Zero)
+            {
+                return false;
+            }
+
+            var monitorHandle = MonitorFromWindow(gameWindowHandle, MonitorDefaultToNearest);
+            if (monitorHandle == System.IntPtr.Zero)
+            {
+                return false;
+            }
+
+            var monitorInfo = new MonitorInfo();
+            monitorInfo.cbSize = Marshal.SizeOf<MonitorInfo>();
+            if (!GetMonitorInfo(monitorHandle, ref monitorInfo))
+            {
+                return false;
+            }
+
+            bounds = ConvertMonitorRectToDipBounds(monitorHandle, monitorInfo.rcMonitor);
+            return true;
+        }
+
+        private static System.IntPtr FindGameWindowHandle()
+        {
+            var processIds = new HashSet<int>();
+
+            foreach (var processName in GameProcessNames)
+            {
+                foreach (var process in Process.GetProcessesByName(processName))
+                {
+                    processIds.Add(process.Id);
+                }
+            }
+
+            if (processIds.Count == 0)
+            {
+                return System.IntPtr.Zero;
+            }
+
+            var result = System.IntPtr.Zero;
+            EnumWindows(
+                (windowHandle, _) =>
+                {
+                    if (!IsWindowVisible(windowHandle) || GetWindow(windowHandle, GwOwner) != System.IntPtr.Zero)
+                    {
+                        return true;
+                    }
+
+                    GetWindowThreadProcessId(windowHandle, out var processId);
+                    if (!processIds.Contains(unchecked((int)processId)))
+                    {
+                        return true;
+                    }
+
+                    result = windowHandle;
+                    return false;
+                },
+                System.IntPtr.Zero);
+
+            return result;
+        }
+
+        private static OverlayBounds ConvertMonitorRectToDipBounds(System.IntPtr monitorHandle, RectNative monitorRect)
+        {
+            var dpiScale = GetMonitorScale(monitorHandle);
+            return new OverlayBounds(
+                monitorRect.Left / dpiScale.X,
+                monitorRect.Top / dpiScale.Y,
+                (monitorRect.Right - monitorRect.Left) / dpiScale.X,
+                (monitorRect.Bottom - monitorRect.Top) / dpiScale.Y);
+        }
+
+        private static (double X, double Y) GetMonitorScale(System.IntPtr monitorHandle)
+        {
+            if (GetDpiForMonitor(monitorHandle, MonitorDpiType.Effective, out var dpiX, out var dpiY) == 0 &&
+                dpiX > 0 &&
+                dpiY > 0)
+            {
+                return (dpiX / 96.0, dpiY / 96.0);
+            }
+
+            return (1.0, 1.0);
         }
 
         private void ApplyInteractionMode()
@@ -390,6 +526,55 @@ namespace StarCitizenOverLay
             int cx,
             int cy,
             uint uFlags);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+        private static extern System.IntPtr MonitorFromWindow(System.IntPtr hWnd, uint dwFlags);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+        private static extern bool GetMonitorInfo(System.IntPtr hMonitor, ref MonitorInfo lpmi);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, System.IntPtr lParam);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool IsWindowVisible(System.IntPtr hWnd);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+        private static extern System.IntPtr GetWindow(System.IntPtr hWnd, int uCmd);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(System.IntPtr hWnd, out uint lpdwProcessId);
+
+        [System.Runtime.InteropServices.DllImport("shcore.dll")]
+        private static extern int GetDpiForMonitor(System.IntPtr hmonitor, MonitorDpiType dpiType, out uint dpiX, out uint dpiY);
+
+        private delegate bool EnumWindowsProc(System.IntPtr hWnd, System.IntPtr lParam);
+
+        private readonly record struct OverlayBounds(double Left, double Top, double Width, double Height);
+
+        private enum MonitorDpiType
+        {
+            Effective = 0
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RectNative
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private struct MonitorInfo
+        {
+            public int cbSize;
+            public RectNative rcMonitor;
+            public RectNative rcWork;
+            public uint dwFlags;
+        }
 
         public sealed class SearchResultViewModel
         {
