@@ -608,8 +608,8 @@ namespace StarCitizenOverLay
             }
 
             SelectedResultCategoryText.Text = result.CategoryLabel;
-            SelectedResultNameText.Text = result.Name;
-            SelectedResultNameChsText.Text = result.NameChsDisplay;
+            SelectedResultNameText.Text = result.PrimaryName;
+            SelectedResultNameChsText.Text = result.DetailSubtitle;
             SelectedResultMetaText.Text = result.SummaryMetaLine;
             SelectedResultFlagsText.Text = result.FlagsLine;
             SelectedResultFooterText.Text = result.FooterLine;
@@ -767,9 +767,15 @@ namespace StarCitizenOverLay
         {
             public SearchResultViewModel(ItemSearchResult result)
             {
-                Name = string.IsNullOrWhiteSpace(result.Name) ? "（未命名物品）" : result.Name;
-                NameChsDisplay = string.IsNullOrWhiteSpace(result.NameChs) ? "暂无中文名" : result.NameChs;
+                Name = string.IsNullOrWhiteSpace(result.Name) ? "（未命名物品）" : result.Name.Trim();
+                var hasChineseName = !string.IsNullOrWhiteSpace(result.NameChs);
+                NameChsDisplay = hasChineseName ? result.NameChs!.Trim() : "暂无中文名";
                 CategoryLabel = string.IsNullOrWhiteSpace(result.CategoryLabel) ? "未知分类" : result.CategoryLabel;
+                PrimaryName = hasChineseName ? NameChsDisplay : Name;
+                SecondaryInfoLine = BuildSecondaryInfoLine(hasChineseName ? Name : null, result);
+                DetailSubtitle = hasChineseName
+                    ? Name
+                    : "当前结果暂无中文名，已优先显示英文名。";
                 SummaryMetaLine = BuildSummaryMetaLine(result);
                 FlagsLine = BuildFlagsLine(result.Flags);
                 FooterLine = BuildFooterLine(result);
@@ -798,6 +804,12 @@ namespace StarCitizenOverLay
             public string NameChsDisplay { get; }
 
             public string CategoryLabel { get; }
+
+            public string PrimaryName { get; }
+
+            public string SecondaryInfoLine { get; }
+
+            public string DetailSubtitle { get; }
 
             public string MetaLine { get; }
 
@@ -835,6 +847,33 @@ namespace StarCitizenOverLay
                 }
 
                 return string.Join("  ·  ", parts);
+            }
+
+            private static string BuildSecondaryInfoLine(string? englishName, ItemSearchResult result)
+            {
+                var parts = new List<string>();
+
+                if (!string.IsNullOrWhiteSpace(englishName))
+                {
+                    parts.Add(englishName);
+                }
+
+                if (!string.IsNullOrWhiteSpace(result.Size))
+                {
+                    parts.Add(result.Size.Trim());
+                }
+
+                if (!string.IsNullOrWhiteSpace(result.Type))
+                {
+                    parts.Add(result.Type.Trim());
+                }
+
+                if (!string.IsNullOrWhiteSpace(result.Rank))
+                {
+                    parts.Add(result.Rank.Trim());
+                }
+
+                return string.Join("  |  ", parts);
             }
 
             private static string BuildFlagsLine(ItemSearchResultFlags? flags)

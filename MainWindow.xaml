@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:StarCitizenOverLay"
+        xmlns:data="clr-namespace:System.Windows.Data;assembly=PresentationFramework"
         mc:Ignorable="d"
         Title="星际公民 Overlay"
         Icon="Assets/AppIcon.ico"
@@ -62,6 +63,12 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <CollectionViewSource x:Key="GroupedSearchResultsView"
+                              Source="{Binding SearchResults}">
+            <CollectionViewSource.GroupDescriptions>
+                <data:PropertyGroupDescription PropertyName="CategoryLabel" />
+            </CollectionViewSource.GroupDescriptions>
+        </CollectionViewSource>
     </Window.Resources>
     <Grid Background="Transparent">
         <Border Margin="0"
@@ -298,7 +305,7 @@
                             <ListBox x:Name="SearchResultsListBox"
                                      Background="Transparent"
                                      BorderThickness="0"
-                                     ItemsSource="{Binding SearchResults}"
+                                     ItemsSource="{Binding Source={StaticResource GroupedSearchResultsView}}"
                                      SelectionChanged="SearchResultsListBox_SelectionChanged"
                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
@@ -306,6 +313,19 @@
                                     <Style TargetType="ScrollBar"
                                            BasedOn="{StaticResource OverlayScrollBarStyle}" />
                                 </ListBox.Resources>
+                                <ListBox.GroupStyle>
+                                    <GroupStyle>
+                                        <GroupStyle.HeaderTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Margin="0,4,0,10"
+                                                           Foreground="#FF8ED0F7"
+                                                           FontSize="12"
+                                                           FontWeight="Bold"
+                                                           Text="{Binding Name}" />
+                                            </DataTemplate>
+                                        </GroupStyle.HeaderTemplate>
+                                    </GroupStyle>
+                                </ListBox.GroupStyle>
                                 <ListBox.ItemContainerStyle>
                                     <Style TargetType="ListBoxItem">
                                         <Setter Property="Padding"
@@ -345,36 +365,29 @@
                                                     <Grid.RowDefinitions>
                                                         <RowDefinition Height="Auto" />
                                                         <RowDefinition Height="Auto" />
-                                                        <RowDefinition Height="Auto" />
                                                     </Grid.RowDefinitions>
-                                                    <DockPanel Grid.Row="0"
-                                                               LastChildFill="False">
-                                                        <TextBlock FontSize="16"
-                                                                   FontWeight="SemiBold"
-                                                                   Foreground="White"
-                                                                   Text="{Binding Name}" />
-                                                        <Border DockPanel.Dock="Right"
-                                                                Margin="10,0,0,0"
-                                                                Padding="8,2"
-                                                                Background="#66314B63"
-                                                                CornerRadius="8">
-                                                            <TextBlock Foreground="#FF8ED0F7"
-                                                                       FontSize="12"
-                                                                       Text="{Binding CategoryLabel}" />
-                                                        </Border>
-                                                    </DockPanel>
-                                                    <TextBlock Grid.Row="1"
+                                                    <TextBlock Grid.Row="0"
+                                                               FontSize="16"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="White"
+                                                               Text="{Binding PrimaryName}" />
+                                                    <TextBlock x:Name="SearchResultSecondaryText"
+                                                               Grid.Row="1"
                                                                Margin="0,6,0,0"
                                                                Foreground="#FFD9E7F3"
-                                                               Text="{Binding NameChsDisplay}" />
-                                                    <TextBlock Grid.Row="2"
-                                                               Margin="0,8,0,0"
-                                                               Foreground="#FF8ED0F7"
-                                                               Text="{Binding MetaLine}" />
+                                                               FontSize="12"
+                                                               TextWrapping="Wrap"
+                                                               Text="{Binding SecondaryInfoLine}" />
                                                 </Grid>
                                             </Grid>
                                         </Border>
                                         <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding SecondaryInfoLine}"
+                                                         Value="">
+                                                <Setter TargetName="SearchResultSecondaryText"
+                                                        Property="Visibility"
+                                                        Value="Collapsed" />
+                                            </DataTrigger>
                                             <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected}"
                                                          Value="True">
                                                 <Setter TargetName="SearchResultCard"
@@ -407,48 +420,134 @@
                                 <StackPanel>
                                     <DockPanel LastChildFill="False">
                                         <TextBlock Foreground="#FF8ED0F7"
-                                                   FontSize="12"
+                                                   FontSize="13"
                                                    FontWeight="Bold"
-                                                   Text="当前选中" />
+                                                   Text="详细信息" />
                                         <Border DockPanel.Dock="Right"
                                                 Padding="8,2"
-                                                Background="#66314B63"
+                                                Background="#55314B63"
                                                 CornerRadius="8">
-                                            <TextBlock x:Name="SelectedResultCategoryText"
-                                                       Foreground="#FF8ED0F7"
-                                                       FontSize="12"
-                                                       Text="未选中" />
+                                            <TextBlock Foreground="#FF8ED0F7"
+                                                       FontSize="11"
+                                                       Text="搜索结果摘要" />
                                         </Border>
                                     </DockPanel>
-                                    <TextBlock x:Name="SelectedResultNameText"
-                                               Margin="0,10,0,0"
-                                               Foreground="White"
-                                               FontSize="18"
-                                               FontWeight="SemiBold"
-                                               TextWrapping="Wrap"
-                                               Text="还没有选中结果" />
-                                    <TextBlock x:Name="SelectedResultNameChsText"
-                                               Margin="0,4,0,0"
-                                               Foreground="#FFD9E7F3"
-                                               TextWrapping="Wrap"
-                                               Text="执行搜索后会自动选中第一条结果。" />
-                                    <TextBlock x:Name="SelectedResultMetaText"
-                                               Margin="0,10,0,0"
+                                    <Border Margin="0,12,0,0"
+                                            Padding="14"
+                                            Background="#40131D29"
+                                            BorderBrush="#553D617B"
+                                            BorderThickness="1"
+                                            CornerRadius="12">
+                                        <StackPanel>
+                                            <DockPanel LastChildFill="False">
+                                                <TextBlock Foreground="#FF8ED0F7"
+                                                           FontSize="12"
+                                                           FontWeight="Bold"
+                                                           Text="物品概览" />
+                                                <Border DockPanel.Dock="Right"
+                                                        Padding="8,2"
+                                                        Background="#66314B63"
+                                                        CornerRadius="8">
+                                                    <TextBlock x:Name="SelectedResultCategoryText"
+                                                               Foreground="#FF8ED0F7"
+                                                               FontSize="12"
+                                                               Text="未选中" />
+                                                </Border>
+                                            </DockPanel>
+                                            <TextBlock x:Name="SelectedResultNameText"
+                                                       Margin="0,12,0,0"
+                                                       Foreground="White"
+                                                       FontSize="20"
+                                                       FontWeight="SemiBold"
+                                                       TextWrapping="Wrap"
+                                                       Text="还没有选中结果" />
+                                            <TextBlock x:Name="SelectedResultNameChsText"
+                                                       Margin="0,6,0,0"
+                                                       Foreground="#FFD9E7F3"
+                                                       TextWrapping="Wrap"
+                                                       Text="执行搜索后会自动选中第一条结果。" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <TextBlock Margin="0,14,0,0"
                                                Foreground="#FF8ED0F7"
-                                               TextWrapping="Wrap"
-                                               Text="输入关键词后按回车搜索，也可以用上下方向键切换当前项。" />
-                                    <TextBlock x:Name="SelectedResultFlagsText"
-                                               Margin="0,10,0,0"
-                                               Foreground="#FFD9E7F3"
                                                FontSize="12"
-                                               TextWrapping="Wrap"
-                                               Text="特殊标记：暂无" />
-                                    <TextBlock x:Name="SelectedResultFooterText"
-                                               Margin="0,10,0,0"
+                                               FontWeight="Bold"
+                                               Text="基础信息" />
+                                    <Border Margin="0,8,0,0"
+                                            Background="#40131D29"
+                                            BorderBrush="#553D617B"
+                                            BorderThickness="1"
+                                            CornerRadius="12">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+
+                                            <Grid Grid.Row="0"
+                                                  Margin="0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="92" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Margin="14,12,10,12"
+                                                           Foreground="#FF8ED0F7"
+                                                           FontSize="12"
+                                                           Text="属性摘要" />
+                                                <TextBlock x:Name="SelectedResultMetaText"
+                                                           Grid.Column="1"
+                                                           Margin="0,12,14,12"
+                                                           Foreground="White"
+                                                           FontSize="12"
+                                                           TextWrapping="Wrap"
+                                                           Text="输入关键词后按回车搜索，也可以用上下方向键切换当前项。" />
+                                            </Grid>
+
+                                            <Border Grid.Row="1"
+                                                    Height="1"
+                                                    Margin="14,0"
+                                                    Background="#223D617B" />
+
+                                            <Grid Grid.Row="2"
+                                                  Margin="0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="92" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Margin="14,12,10,12"
+                                                           Foreground="#FF8ED0F7"
+                                                           FontSize="12"
+                                                           Text="特殊标记" />
+                                                <TextBlock x:Name="SelectedResultFlagsText"
+                                                           Grid.Column="1"
+                                                           Margin="0,12,14,12"
+                                                           Foreground="#FFD9E7F3"
+                                                           FontSize="12"
+                                                           TextWrapping="Wrap"
+                                                           Text="特殊标记：暂无" />
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+
+                                    <TextBlock Margin="0,14,0,0"
                                                Foreground="#FF8ED0F7"
                                                FontSize="12"
-                                               TextWrapping="Wrap"
-                                               Text="-" />
+                                               FontWeight="Bold"
+                                               Text="搜索上下文" />
+                                    <Border Margin="0,8,0,0"
+                                            Padding="14,12"
+                                            Background="#40131D29"
+                                            BorderBrush="#553D617B"
+                                            BorderThickness="1"
+                                            CornerRadius="12">
+                                        <TextBlock x:Name="SelectedResultFooterText"
+                                                   Foreground="#FFD9E7F3"
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   Text="-" />
+                                    </Border>
                                 </StackPanel>
                             </ScrollViewer>
                         </Border>
