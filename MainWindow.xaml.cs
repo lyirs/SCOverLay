@@ -61,16 +61,19 @@ namespace StarCitizenOverLay
             Closed += MainWindow_Closed;
         }
 
-        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            var workArea = SystemParameters.WorkArea;
-            Left = workArea.Right - ActualWidth - OverlayMargin;
-            Top = workArea.Top + OverlayMargin;
+            Left = SystemParameters.WorkArea.Left;
+            Top = SystemParameters.WorkArea.Top;
+            Width = SystemParameters.WorkArea.Width;
+            Height = SystemParameters.WorkArea.Height;
 
             _apiBaseUrl = LoadApiBaseUrl();
 
             UpdateInteractionStatus();
             UpdateConfigurationStatus();
+            InitializeCombatLogUi();
+            await RefreshCombatLogAsync();
         }
 
         private void MainWindow_SourceInitialized(object? sender, System.EventArgs e)
@@ -162,7 +165,7 @@ namespace StarCitizenOverLay
             {
                 InteractionModeText.Text = "可交互";
                 InteractionDescriptionText.Text = _hotKeyRegistered
-                    ? "窗口当前可接收鼠标输入。拖动顶部标题区域可以移动悬浮层。"
+                    ? "当前是全屏透明宿主层。可交互模式下可以点击面板内容。"
                     : "窗口当前可接收鼠标输入，但快捷键注册失败，暂时无法切换模式。";
             }
             else
