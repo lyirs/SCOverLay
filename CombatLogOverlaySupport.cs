@@ -625,20 +625,23 @@ namespace StarCitizenOverLay
                 var style = GetBadgeStyle(entry.Kind);
                 BadgeText = style.Text;
                 BadgeBackground = style.Background;
+                TimeText = entry.Timestamp.LocalDateTime.ToString("HH:mm:ss");
                 Headline = entry.Headline;
                 DetailLine = entry.DetailLine;
-                MetaLine = $"时间：{entry.Timestamp.LocalDateTime:MM-dd HH:mm:ss} | {entry.ContextLine}";
+                ContextLine = entry.ContextLine;
             }
 
             public string BadgeText { get; }
 
             public string BadgeBackground { get; }
 
+            public string TimeText { get; }
+
             public string Headline { get; }
 
             public string DetailLine { get; }
 
-            public string MetaLine { get; }
+            public string ContextLine { get; }
 
             private static (string Text, string Background) GetBadgeStyle(CombatEventKind kind)
             {

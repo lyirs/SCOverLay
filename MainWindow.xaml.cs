@@ -106,7 +106,7 @@ namespace StarCitizenOverLay
             _apiBaseUrl = LoadApiBaseUrl();
 
             UpdateInteractionStatus();
-            UpdateConfigurationStatus();
+            InitializeSearchUi();
             InitializeCombatLogUi();
             await RefreshCombatLogAsync();
         }
@@ -207,6 +207,18 @@ namespace StarCitizenOverLay
             {
                 e.Handled = true;
                 await ExecuteSearchAsync();
+                return;
+            }
+
+            if (e.Key == Key.Down)
+            {
+                e.Handled = MoveSearchSelection(1);
+                return;
+            }
+
+            if (e.Key == Key.Up)
+            {
+                e.Handled = MoveSearchSelection(-1);
             }
         }
 
@@ -429,26 +441,44 @@ namespace StarCitizenOverLay
             }
         }
 
-        private void UpdateConfigurationStatus()
+        private void InitializeSearchUi()
         {
-            var hasConfig = !string.IsNullOrWhiteSpace(_apiBaseUrl);
+            UpdateSearchInputState();
+
+            if (HasSearchConfiguration())
+            {
+                SearchStatusText.Text = "就绪";
+                SearchSummaryText.Text = "输入关键词后按回车，也可以用上下方向键切换当前项。";
+                ResetSelectedSearchResultSummary();
+                return;
+            }
+
+            ApplyMissingSearchConfigurationState();
+        }
+
+        private void UpdateSearchInputState()
+        {
+            var hasConfig = HasSearchConfiguration();
 
             ConfigStatusText.Visibility = hasConfig ? Visibility.Collapsed : Visibility.Visible;
             SearchQueryTextBox.IsEnabled = hasConfig && !_isSearching;
             SearchButton.IsEnabled = hasConfig && !_isSearching;
             SearchButton.Content = _isSearching ? "搜索中..." : "搜索";
+        }
 
-            if (hasConfig)
-            {
-                SearchStatusText.Text = "就绪";
-                SearchSummaryText.Text = "还没有执行搜索。";
-                return;
-            }
-
+        private void ApplyMissingSearchConfigurationState()
+        {
             ConfigStatusText.Text = "缺少 .env 中的 API_BASE_URL。请更新项目根目录 .env 后重新生成并运行。";
             SearchStatusText.Text = "当前无法搜索。";
             SearchSummaryText.Text = "需要先完成配置。";
             SearchResults.Clear();
+            SearchResultsListBox.SelectedIndex = -1;
+            ResetSelectedSearchResultSummary();
+        }
+
+        private bool HasSearchConfiguration()
+        {
+            return !string.IsNullOrWhiteSpace(_apiBaseUrl);
         }
 
         private async Task ExecuteSearchAsync()
@@ -458,9 +488,16 @@ namespace StarCitizenOverLay
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(_apiBaseUrl))
+            if (!HasSearchConfiguration())
             {
-                UpdateConfigurationStatus();
+                ApplyMissingSearchConfigurationState();
+                return;
+            }
+
+            var apiBaseUrl = _apiBaseUrl;
+            if (string.IsNullOrWhiteSpace(apiBaseUrl))
+            {
+                ApplyMissingSearchConfigurationState();
                 return;
             }
 
@@ -470,20 +507,22 @@ namespace StarCitizenOverLay
                 SearchStatusText.Text = "请先输入搜索关键词。";
                 SearchSummaryText.Text = "等待输入。";
                 SearchResults.Clear();
+                SearchResultsListBox.SelectedIndex = -1;
+                ResetSelectedSearchResultSummary();
                 return;
             }
 
             _isSearching = true;
-            SearchQueryTextBox.IsEnabled = false;
-            SearchButton.IsEnabled = false;
-            SearchButton.Content = "搜索中...";
+            UpdateSearchInputState();
             SearchStatusText.Text = $"正在搜索“{query}”...";
             SearchSummaryText.Text = "等待服务响应。";
             SearchResults.Clear();
+            SearchResultsListBox.SelectedIndex = -1;
+            ResetSelectedSearchResultSummary();
 
             try
             {
-                var requestUrl = BuildSearchUrl(_apiBaseUrl, query);
+                var requestUrl = BuildSearchUrl(apiBaseUrl, query);
                 using var response = await SearchHttpClient.GetAsync(requestUrl);
 
                 if (!response.IsSuccessStatusCode)
@@ -510,6 +549,10 @@ namespace StarCitizenOverLay
                     return;
                 }
 
+                SearchResultsListBox.SelectedIndex = 0;
+                SearchResultsListBox.ScrollIntoView(SearchResults[0]);
+                UpdateSelectedSearchResult(SearchResults[0]);
+
                 SearchSummaryText.Text = payload.Total > SearchResults.Count
                     ? $"当前显示前 {SearchResults.Count} 条，共 {payload.Total} 条结果。"
                     : $"共找到 {SearchResults.Count} 条结果。";
@@ -522,8 +565,64 @@ namespace StarCitizenOverLay
             finally
             {
                 _isSearching = false;
-                UpdateConfigurationStatus();
+                UpdateSearchInputState();
             }
+        }
+
+        private bool MoveSearchSelection(int offset)
+        {
+            if (SearchResults.Count == 0)
+            {
+                return false;
+            }
+
+            var currentIndex = SearchResultsListBox.SelectedIndex;
+            if (currentIndex < 0)
+            {
+                currentIndex = offset > 0 ? -1 : SearchResults.Count;
+            }
+
+            var targetIndex = Math.Clamp(currentIndex + offset, 0, SearchResults.Count - 1);
+            if (targetIndex == SearchResultsListBox.SelectedIndex)
+            {
+                return true;
+            }
+
+            SearchResultsListBox.SelectedIndex = targetIndex;
+            SearchResultsListBox.ScrollIntoView(SearchResults[targetIndex]);
+            UpdateSelectedSearchResult(SearchResults[targetIndex]);
+            return true;
+        }
+
+        private void SearchResultsListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateSelectedSearchResult(SearchResultsListBox.SelectedItem as SearchResultViewModel);
+        }
+
+        private void UpdateSelectedSearchResult(SearchResultViewModel? result)
+        {
+            if (result is null)
+            {
+                ResetSelectedSearchResultSummary();
+                return;
+            }
+
+            SelectedResultCategoryText.Text = result.CategoryLabel;
+            SelectedResultNameText.Text = result.Name;
+            SelectedResultNameChsText.Text = result.NameChsDisplay;
+            SelectedResultMetaText.Text = result.SummaryMetaLine;
+            SelectedResultFlagsText.Text = result.FlagsLine;
+            SelectedResultFooterText.Text = result.FooterLine;
+        }
+
+        private void ResetSelectedSearchResultSummary()
+        {
+            SelectedResultCategoryText.Text = "未选中";
+            SelectedResultNameText.Text = "还没有选中结果";
+            SelectedResultNameChsText.Text = "执行搜索后会自动选中第一条结果。";
+            SelectedResultMetaText.Text = "输入关键词后按回车，也可以用上下方向键切换当前项。";
+            SelectedResultFlagsText.Text = "特殊标记：暂无";
+            SelectedResultFooterText.Text = "-";
         }
 
         private static string? LoadApiBaseUrl()
@@ -671,6 +770,9 @@ namespace StarCitizenOverLay
                 Name = string.IsNullOrWhiteSpace(result.Name) ? "（未命名物品）" : result.Name;
                 NameChsDisplay = string.IsNullOrWhiteSpace(result.NameChs) ? "暂无中文名" : result.NameChs;
                 CategoryLabel = string.IsNullOrWhiteSpace(result.CategoryLabel) ? "未知分类" : result.CategoryLabel;
+                SummaryMetaLine = BuildSummaryMetaLine(result);
+                FlagsLine = BuildFlagsLine(result.Flags);
+                FooterLine = BuildFooterLine(result);
 
                 var metaParts = new List<string>();
                 if (!string.IsNullOrWhiteSpace(result.Size))
@@ -698,6 +800,95 @@ namespace StarCitizenOverLay
             public string CategoryLabel { get; }
 
             public string MetaLine { get; }
+
+            public string SummaryMetaLine { get; }
+
+            public string FlagsLine { get; }
+
+            public string FooterLine { get; }
+
+            private static string BuildSummaryMetaLine(ItemSearchResult result)
+            {
+                var parts = new List<string>
+                {
+                    $"分类：{(string.IsNullOrWhiteSpace(result.CategoryLabel) ? "未知分类" : result.CategoryLabel)}"
+                };
+
+                if (!string.IsNullOrWhiteSpace(result.Size))
+                {
+                    parts.Add($"尺寸：{result.Size}");
+                }
+
+                if (!string.IsNullOrWhiteSpace(result.Type))
+                {
+                    parts.Add($"类型：{result.Type}");
+                }
+
+                if (!string.IsNullOrWhiteSpace(result.Rank))
+                {
+                    parts.Add($"等级：{result.Rank}");
+                }
+
+                if (result.Rarity.HasValue)
+                {
+                    parts.Add($"稀有度：{result.Rarity.Value}");
+                }
+
+                return string.Join("  ·  ", parts);
+            }
+
+            private static string BuildFlagsLine(ItemSearchResultFlags? flags)
+            {
+                if (flags is null)
+                {
+                    return "特殊标记：无";
+                }
+
+                var labels = new List<string>();
+                AddFlagLabel(labels, flags.ApiPrice, "API 价格");
+                AddFlagLabel(labels, flags.ManualPrice, "手工价格");
+                AddFlagLabel(labels, flags.Pledge, "商店物品");
+                AddFlagLabel(labels, flags.Subscriber, "订阅物品");
+                AddFlagLabel(labels, flags.Concierge, "礼宾物品");
+                AddFlagLabel(labels, flags.Limited, "限时销售");
+                AddFlagLabel(labels, flags.EventAward, "活动奖励");
+                AddFlagLabel(labels, flags.Lucky, "稀有掉落");
+                AddFlagLabel(labels, flags.Banu, "巴努兑换");
+
+                return labels.Count > 0
+                    ? $"特殊标记：{string.Join(" / ", labels)}"
+                    : "特殊标记：无";
+            }
+
+            private static string BuildFooterLine(ItemSearchResult result)
+            {
+                var parts = new List<string>();
+
+                if (result.Id > 0)
+                {
+                    parts.Add($"ID：{result.Id}");
+                }
+
+                if (!string.IsNullOrWhiteSpace(result.CategoryKey))
+                {
+                    parts.Add($"分类键：{result.CategoryKey}");
+                }
+
+                if (result.Score != 0)
+                {
+                    parts.Add($"评分：{result.Score}");
+                }
+
+                return parts.Count > 0 ? string.Join("  ·  ", parts) : "-";
+            }
+
+            private static void AddFlagLabel(ICollection<string> labels, bool isEnabled, string label)
+            {
+                if (isEnabled)
+                {
+                    labels.Add(label);
+                }
+            }
         }
 
         private sealed class ItemSearchResponse
@@ -711,7 +902,11 @@ namespace StarCitizenOverLay
 
         public sealed class ItemSearchResult
         {
+            public string CategoryKey { get; set; } = string.Empty;
+
             public string CategoryLabel { get; set; } = string.Empty;
+
+            public int Id { get; set; }
 
             public string Name { get; set; } = string.Empty;
 
@@ -722,6 +917,33 @@ namespace StarCitizenOverLay
             public string? Type { get; set; }
 
             public string? Rank { get; set; }
+
+            public int? Rarity { get; set; }
+
+            public int Score { get; set; }
+
+            public ItemSearchResultFlags Flags { get; set; } = new();
+        }
+
+        public sealed class ItemSearchResultFlags
+        {
+            public bool ApiPrice { get; set; }
+
+            public bool ManualPrice { get; set; }
+
+            public bool Pledge { get; set; }
+
+            public bool Subscriber { get; set; }
+
+            public bool Concierge { get; set; }
+
+            public bool Limited { get; set; }
+
+            public bool EventAward { get; set; }
+
+            public bool Lucky { get; set; }
+
+            public bool Banu { get; set; }
         }
     }
 }

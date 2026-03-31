@@ -15,6 +15,54 @@
         Background="Transparent"
         Topmost="True"
         WindowStartupLocation="Manual">
+    <Window.Resources>
+        <Style x:Key="OverlayScrollBarStyle"
+               TargetType="ScrollBar">
+            <Setter Property="Width"
+                    Value="8" />
+            <Setter Property="Background"
+                    Value="Transparent" />
+            <Setter Property="Margin"
+                    Value="4,0,0,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Width="{TemplateBinding Width}"
+                              Background="Transparent">
+                            <Border Margin="2,0"
+                                    Background="#22162430"
+                                    CornerRadius="4" />
+                            <Track x:Name="PART_Track"
+                                   IsDirectionReversed="True">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageUpCommand"
+                                                  Focusable="False"
+                                                  IsTabStop="False"
+                                                  Opacity="0" />
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="#B32CA9E1"
+                                                        CornerRadius="4" />
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageDownCommand"
+                                                  Focusable="False"
+                                                  IsTabStop="False"
+                                                  Opacity="0" />
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <Grid Background="Transparent">
         <Border Margin="0"
                 Padding="0"
@@ -84,65 +132,88 @@
                                 <TextBlock Foreground="#FF8ED0F7"
                                            FontSize="12"
                                            FontWeight="Bold"
-                                           Text="事件日志" />
+                                           Text="事件流" />
                                 <Button x:Name="CombatLogRefreshButton"
                                         DockPanel.Dock="Right"
-                                        Width="96"
-                                        Height="30"
-                                        Padding="10,4"
+                                        Width="82"
+                                        Height="28"
+                                        Padding="8,3"
                                         Background="#FF1776A8"
                                         BorderBrush="#FF2CA9E1"
                                         Click="CombatLogRefreshButton_Click"
-                                        Content="刷新日志"
+                                        Content="刷新"
                                         Foreground="White" />
                             </DockPanel>
                             <TextBlock x:Name="CombatLogStatusText"
-                                       Margin="0,10,0,0"
+                                       Margin="0,8,0,0"
                                        Foreground="#FFD9E7F3"
                                        Text="等待读取日志。" />
                             <TextBlock x:Name="CombatLogSummaryText"
-                                       Margin="0,6,0,0"
+                                       Margin="0,4,0,0"
                                        Foreground="#FF8ED0F7"
+                                       FontSize="12"
                                        TextWrapping="Wrap"
                                        Text="将自动定位 Star Citizen 安装目录并解析最近战斗、上下线和异常事件。" />
-                            <ScrollViewer Margin="0,10,0,0"
-                                          Height="320"
+                            <ScrollViewer Margin="0,8,0,0"
+                                          Height="336"
                                           VerticalScrollBarVisibility="Auto">
+                                <ScrollViewer.Resources>
+                                    <Style TargetType="ScrollBar"
+                                           BasedOn="{StaticResource OverlayScrollBarStyle}" />
+                                </ScrollViewer.Resources>
                                 <ItemsControl ItemsSource="{Binding CombatLogEntries}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Margin="0,0,0,10"
-                                                    Padding="10"
-                                                    Background="#4D1A2533"
-                                                    BorderBrush="#664A87A8"
+                                            <Border Margin="0,0,0,8"
+                                                    Padding="0"
+                                                    Background="#40131D29"
+                                                    BorderBrush="#553D617B"
                                                     BorderThickness="1"
-                                                    CornerRadius="10">
-                                                <StackPanel>
-                                                    <DockPanel LastChildFill="False">
-                                                        <Border Padding="8,2"
-                                                                Background="{Binding BadgeBackground}"
-                                                                CornerRadius="8">
-                                                            <TextBlock Foreground="White"
-                                                                       FontSize="12"
-                                                                       FontWeight="Bold"
-                                                                       Text="{Binding BadgeText}" />
-                                                        </Border>
-                                                        <TextBlock Margin="10,0,0,0"
-                                                                   FontSize="15"
+                                                    CornerRadius="9">
+                                                <Grid>
+                                                    <Border Width="4"
+                                                            HorizontalAlignment="Left"
+                                                            Background="{Binding BadgeBackground}"
+                                                            CornerRadius="9,0,0,9" />
+                                                    <Grid Margin="12,10,12,10">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <DockPanel Grid.Row="0"
+                                                                   LastChildFill="False">
+                                                            <Border Padding="6,2"
+                                                                    Background="{Binding BadgeBackground}"
+                                                                    CornerRadius="7">
+                                                                <TextBlock Foreground="White"
+                                                                           FontSize="11"
+                                                                           FontWeight="Bold"
+                                                                           Text="{Binding BadgeText}" />
+                                                            </Border>
+                                                            <TextBlock DockPanel.Dock="Right"
+                                                                       Foreground="#FF8ED0F7"
+                                                                       FontSize="11"
+                                                                       Text="{Binding TimeText}" />
+                                                        </DockPanel>
+                                                        <TextBlock Grid.Row="1"
+                                                                   Margin="0,8,0,0"
+                                                                   FontSize="14"
                                                                    FontWeight="SemiBold"
                                                                    Foreground="White"
+                                                                   TextWrapping="Wrap"
                                                                    Text="{Binding Headline}" />
-                                                    </DockPanel>
-                                                    <TextBlock Margin="0,8,0,0"
-                                                               Foreground="#FFD9E7F3"
-                                                               TextWrapping="Wrap"
-                                                               Text="{Binding DetailLine}" />
-                                                    <TextBlock Margin="0,6,0,0"
-                                                               Foreground="#FF8ED0F7"
-                                                               FontSize="12"
-                                                               TextWrapping="Wrap"
-                                                               Text="{Binding MetaLine}" />
-                                                </StackPanel>
+                                                        <TextBlock Grid.Row="2"
+                                                                   Margin="0,4,0,0"
+                                                                   Foreground="#FFD9E7F3"
+                                                                   FontSize="12"
+                                                                   TextWrapping="Wrap">
+                                                            <Run Text="{Binding DetailLine, Mode=OneWay}" />
+                                                            <Run Text="  ·  " Foreground="#667F9AB1" />
+                                                            <Run Text="{Binding ContextLine, Mode=OneWay}" Foreground="#FF8ED0F7" />
+                                                        </TextBlock>
+                                                    </Grid>
+                                                </Grid>
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -209,52 +280,179 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Grid.Row="1"
-                            Margin="0,14,0,0"
-                            Padding="12"
-                            Height="620"
-                            Background="#B309131C"
-                            BorderBrush="#662CA9E1"
-                            BorderThickness="1"
-                            CornerRadius="14">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding SearchResults}">
-                                <ItemsControl.ItemTemplate>
+                    <Grid Grid.Row="1"
+                          Margin="0,14,0,0"
+                          Height="620">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.45*" />
+                            <ColumnDefinition Width="14" />
+                            <ColumnDefinition Width="1*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0"
+                                Padding="12"
+                                Background="#B309131C"
+                                BorderBrush="#662CA9E1"
+                                BorderThickness="1"
+                                CornerRadius="14">
+                            <ListBox x:Name="SearchResultsListBox"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     ItemsSource="{Binding SearchResults}"
+                                     SelectionChanged="SearchResultsListBox_SelectionChanged"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <ListBox.Resources>
+                                    <Style TargetType="ScrollBar"
+                                           BasedOn="{StaticResource OverlayScrollBarStyle}" />
+                                </ListBox.Resources>
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="Padding"
+                                                Value="0" />
+                                        <Setter Property="Margin"
+                                                Value="0,0,0,10" />
+                                        <Setter Property="HorizontalContentAlignment"
+                                                Value="Stretch" />
+                                        <Setter Property="Background"
+                                                Value="Transparent" />
+                                        <Setter Property="BorderThickness"
+                                                Value="0" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListBoxItem">
+                                                    <ContentPresenter />
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Margin="0,0,0,10"
-                                                Padding="10"
+                                        <Border x:Name="SearchResultCard"
+                                                Padding="12"
                                                 Background="#4D1A2533"
                                                 BorderBrush="#664A87A8"
                                                 BorderThickness="1"
                                                 CornerRadius="10">
-                                            <StackPanel>
-                                                <DockPanel LastChildFill="False">
-                                                    <TextBlock FontSize="16"
-                                                               FontWeight="SemiBold"
-                                                               Foreground="White"
-                                                               Text="{Binding Name}" />
-                                                    <Border Margin="10,0,0,0"
-                                                            Padding="8,2"
-                                                            Background="#66314B63"
-                                                            CornerRadius="8">
-                                                        <TextBlock Foreground="#FF8ED0F7"
-                                                                   FontSize="12"
-                                                                   Text="{Binding CategoryLabel}" />
-                                                    </Border>
-                                                </DockPanel>
-                                                <TextBlock Margin="0,6,0,0"
-                                                           Foreground="#FFD9E7F3"
-                                                           Text="{Binding NameChsDisplay}" />
-                                                <TextBlock Margin="0,8,0,0"
-                                                           Foreground="#FF8ED0F7"
-                                                           Text="{Binding MetaLine}" />
-                                            </StackPanel>
+                                            <Grid>
+                                                <Border x:Name="SearchResultAccent"
+                                                        Width="4"
+                                                        HorizontalAlignment="Left"
+                                                        Background="Transparent"
+                                                        CornerRadius="8,0,0,8" />
+                                                <Grid Margin="12,0,0,0">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <DockPanel Grid.Row="0"
+                                                               LastChildFill="False">
+                                                        <TextBlock FontSize="16"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="White"
+                                                                   Text="{Binding Name}" />
+                                                        <Border DockPanel.Dock="Right"
+                                                                Margin="10,0,0,0"
+                                                                Padding="8,2"
+                                                                Background="#66314B63"
+                                                                CornerRadius="8">
+                                                            <TextBlock Foreground="#FF8ED0F7"
+                                                                       FontSize="12"
+                                                                       Text="{Binding CategoryLabel}" />
+                                                        </Border>
+                                                    </DockPanel>
+                                                    <TextBlock Grid.Row="1"
+                                                               Margin="0,6,0,0"
+                                                               Foreground="#FFD9E7F3"
+                                                               Text="{Binding NameChsDisplay}" />
+                                                    <TextBlock Grid.Row="2"
+                                                               Margin="0,8,0,0"
+                                                               Foreground="#FF8ED0F7"
+                                                               Text="{Binding MetaLine}" />
+                                                </Grid>
+                                            </Grid>
                                         </Border>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected}"
+                                                         Value="True">
+                                                <Setter TargetName="SearchResultCard"
+                                                        Property="Background"
+                                                        Value="#66314B63" />
+                                                <Setter TargetName="SearchResultCard"
+                                                        Property="BorderBrush"
+                                                        Value="#FF2CA9E1" />
+                                                <Setter TargetName="SearchResultAccent"
+                                                        Property="Background"
+                                                        Value="#FF2CA9E1" />
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
                                     </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </Border>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Border>
+
+                        <Border Grid.Column="2"
+                                Padding="12"
+                                Background="#B309131C"
+                                BorderBrush="#662CA9E1"
+                                BorderThickness="1"
+                                CornerRadius="14">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ScrollViewer.Resources>
+                                    <Style TargetType="ScrollBar"
+                                           BasedOn="{StaticResource OverlayScrollBarStyle}" />
+                                </ScrollViewer.Resources>
+                                <StackPanel>
+                                    <DockPanel LastChildFill="False">
+                                        <TextBlock Foreground="#FF8ED0F7"
+                                                   FontSize="12"
+                                                   FontWeight="Bold"
+                                                   Text="当前选中" />
+                                        <Border DockPanel.Dock="Right"
+                                                Padding="8,2"
+                                                Background="#66314B63"
+                                                CornerRadius="8">
+                                            <TextBlock x:Name="SelectedResultCategoryText"
+                                                       Foreground="#FF8ED0F7"
+                                                       FontSize="12"
+                                                       Text="未选中" />
+                                        </Border>
+                                    </DockPanel>
+                                    <TextBlock x:Name="SelectedResultNameText"
+                                               Margin="0,10,0,0"
+                                               Foreground="White"
+                                               FontSize="18"
+                                               FontWeight="SemiBold"
+                                               TextWrapping="Wrap"
+                                               Text="还没有选中结果" />
+                                    <TextBlock x:Name="SelectedResultNameChsText"
+                                               Margin="0,4,0,0"
+                                               Foreground="#FFD9E7F3"
+                                               TextWrapping="Wrap"
+                                               Text="执行搜索后会自动选中第一条结果。" />
+                                    <TextBlock x:Name="SelectedResultMetaText"
+                                               Margin="0,10,0,0"
+                                               Foreground="#FF8ED0F7"
+                                               TextWrapping="Wrap"
+                                               Text="输入关键词后按回车搜索，也可以用上下方向键切换当前项。" />
+                                    <TextBlock x:Name="SelectedResultFlagsText"
+                                               Margin="0,10,0,0"
+                                               Foreground="#FFD9E7F3"
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               Text="特殊标记：暂无" />
+                                    <TextBlock x:Name="SelectedResultFooterText"
+                                               Margin="0,10,0,0"
+                                               Foreground="#FF8ED0F7"
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               Text="-" />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
                 </Grid>
             </Grid>
         </Border>
