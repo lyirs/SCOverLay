@@ -79,7 +79,7 @@
                                 <TextBlock Foreground="#FF8ED0F7"
                                            FontSize="12"
                                            FontWeight="Bold"
-                                           Text="击杀日志" />
+                                           Text="事件日志" />
                                 <Button x:Name="CombatLogRefreshButton"
                                         DockPanel.Dock="Right"
                                         Width="96"
@@ -99,7 +99,7 @@
                                        Margin="0,6,0,0"
                                        Foreground="#FF8ED0F7"
                                        TextWrapping="Wrap"
-                                       Text="将自动定位 Star Citizen 安装目录并解析最近击杀事件。" />
+                                       Text="将自动定位 Star Citizen 安装目录并解析最近战斗、上下线和异常事件。" />
                             <ScrollViewer Margin="0,10,0,0"
                                           Height="320"
                                           VerticalScrollBarVisibility="Auto">

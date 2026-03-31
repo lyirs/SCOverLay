@@ -17,9 +17,21 @@ namespace StarCitizenOverLay
         private static readonly Regex LauncherPathRegex = new(
             @"Launching Star Citizen (?<channel>[A-Z\-]+) from \((?<path>.+?)\)",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex LauncherTimestampRegex = new(
+            "\"t\":\"(?<timestamp>[^\"]+)\"",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex LauncherCrashRegex = new(
+            @"Star Citizen process exited abnormally \(code: (?<code>\d+)\)",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex ActorDeathRegex = new(
             @"^<(?<timestamp>[^>]+)>.*?<Actor Death> CActor::Kill: '(?<victim>[^']+)' \[(?<victimId>\d+)\] in zone '(?<zone>[^']*)' killed by '(?<killer>[^']+)' \[(?<killerId>\d+)\] using '(?<weapon>[^']*)' \[Class (?<weaponClass>[^\]]+)\] with damage type '(?<damageType>[^']+)'",
             RegexOptions.Compiled);
+        private static readonly Regex ChannelDisconnectedRegex = new(
+            "^<(?<timestamp>[^>]+)>.*?<Channel Disconnected> cause=(?<cause>\\d+) reason=\"(?<reason>[^\"]+)\".*?nickname=\"(?<name>[^\"]+)\"",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex SystemQuitRegex = new(
+            @"^<(?<timestamp>[^>]+)>.*?<SystemQuit> CSystem::Quit invoked with - cause=(?<cause>\d+), reason=(?<reason>[^,]+), exitCode=(?<exitCode>-?\d+)",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex PlayerBracketRegex = new(
             @"Player\[(?<name>[^\]]+)\]",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -34,7 +46,7 @@ namespace StarCitizenOverLay
         private void InitializeCombatLogUi()
         {
             CombatLogStatusText.Text = "等待读取日志。";
-            CombatLogSummaryText.Text = "将自动定位 Star Citizen 安装目录并解析最近击杀事件。";
+            CombatLogSummaryText.Text = "将自动定位 Star Citizen 安装目录并解析最近战斗、上下线和异常事件。";
             UpdateCombatLogRefreshButtonUi();
         }
 
@@ -59,7 +71,7 @@ namespace StarCitizenOverLay
             _isRefreshingCombatLog = true;
             UpdateCombatLogRefreshButtonUi();
             CombatLogStatusText.Text = "正在读取日志...";
-            CombatLogSummaryText.Text = "正在定位安装目录并解析最近击杀事件。";
+            CombatLogSummaryText.Text = "正在定位安装目录并解析最近战斗、上下线和异常事件。";
             CombatLogEntries.Clear();
 
             try
@@ -101,12 +113,12 @@ namespace StarCitizenOverLay
 
                 if (snapshot.Entries.Count == 0)
                 {
-                    CombatLogStatusText.Text = "已读取日志，暂时没有最近击杀事件。";
+                    CombatLogStatusText.Text = "已读取日志，暂时没有最近事件。";
                     CombatLogSummaryText.Text = $"当前玩家：{snapshot.PlayerName} | 目录：{snapshot.InstallDirectory}";
                     return;
                 }
 
-                CombatLogStatusText.Text = $"已读取最近 {CombatLogEntries.Count} 条击杀事件。";
+                CombatLogStatusText.Text = $"已读取最近 {CombatLogEntries.Count} 条事件。";
                 CombatLogSummaryText.Text = $"当前玩家：{snapshot.PlayerName} | 渠道：{snapshot.Channel} | 目录：{snapshot.InstallDirectory}";
             }
             catch (Exception ex)
@@ -152,7 +164,13 @@ namespace StarCitizenOverLay
                 return CombatLogSnapshot.CreateWithoutPlayerName(launchContext.Channel, launchContext.InstallDirectory, gameLogPath);
             }
 
-            var entries = LoadCombatEntries(gameLogPath, launchContext.InstallDirectory, playerName);
+            var entries = LoadCombatEntries(
+                launcherLogPath,
+                gameLogPath,
+                launchContext.Channel,
+                launchContext.InstallDirectory,
+                playerName);
+
             return CombatLogSnapshot.CreateSuccess(
                 launchContext.Channel,
                 launchContext.InstallDirectory,
@@ -205,31 +223,41 @@ namespace StarCitizenOverLay
             return null;
         }
 
-        private static List<CombatLogEntry> LoadCombatEntries(string gameLogPath, string installDirectory, string playerName)
+        private static List<CombatLogEntry> LoadCombatEntries(
+            string launcherLogPath,
+            string gameLogPath,
+            string channel,
+            string installDirectory,
+            string playerName)
         {
             var collectedEntries = new List<CombatLogEntry>();
             var seenKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var entry in LoadLauncherEntries(launcherLogPath, channel, installDirectory))
+            {
+                AddEventEntry(collectedEntries, seenKeys, entry);
+            }
 
             foreach (var path in EnumerateCombatLogFiles(gameLogPath, installDirectory))
             {
                 foreach (var line in ReadLinesShared(path))
                 {
-                    if (!line.Contains("<Actor Death>", StringComparison.Ordinal))
+                    CombatLogEntry? entry = null;
+
+                    if (line.Contains("<Actor Death>", StringComparison.Ordinal))
                     {
-                        continue;
+                        entry = ParseActorDeathEntry(line, playerName);
+                    }
+                    else if (line.Contains("<Channel Disconnected>", StringComparison.Ordinal))
+                    {
+                        entry = ParseDisconnectEntry(line, playerName);
+                    }
+                    else if (line.Contains("<SystemQuit>", StringComparison.Ordinal))
+                    {
+                        entry = ParseSystemQuitEntry(line);
                     }
 
-                    var entry = ParseCombatLogEntry(line, playerName);
-                    if (entry is null)
-                    {
-                        continue;
-                    }
-
-                    var dedupeKey = $"{entry.Timestamp:O}|{entry.Kind}|{entry.Killer}|{entry.Victim}|{entry.WeaponName}|{entry.DamageType}";
-                    if (seenKeys.Add(dedupeKey))
-                    {
-                        collectedEntries.Add(entry);
-                    }
+                    AddEventEntry(collectedEntries, seenKeys, entry);
                 }
             }
 
@@ -237,6 +265,81 @@ namespace StarCitizenOverLay
                 .OrderByDescending(entry => entry.Timestamp)
                 .Take(MaxCombatLogEntries)
                 .ToList();
+        }
+
+        private static void AddEventEntry(
+            ICollection<CombatLogEntry> collectedEntries,
+            ISet<string> seenKeys,
+            CombatLogEntry? entry)
+        {
+            if (entry is null)
+            {
+                return;
+            }
+
+            if (seenKeys.Add(entry.DeduplicationKey))
+            {
+                collectedEntries.Add(entry);
+            }
+        }
+
+        private static IEnumerable<CombatLogEntry> LoadLauncherEntries(
+            string launcherLogPath,
+            string currentChannel,
+            string installDirectory)
+        {
+            foreach (var line in ReadLinesShared(launcherLogPath))
+            {
+                if (!line.Contains("[Launcher::launch]", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!TryParseLauncherTimestamp(line, out var timestamp))
+                {
+                    continue;
+                }
+
+                var launchMatch = LauncherPathRegex.Match(line);
+                if (launchMatch.Success)
+                {
+                    var path = launchMatch.Groups["path"].Value.Trim();
+                    if (!path.Equals(installDirectory, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    var channel = launchMatch.Groups["channel"].Value.Trim();
+                    yield return new CombatLogEntry(
+                        timestamp,
+                        CombatEventKind.Login,
+                        "启动游戏",
+                        $"渠道：{channel}",
+                        $"目录：{path}",
+                        $"launcher-login|{timestamp:O}|{path}");
+                    continue;
+                }
+
+                if (!line.Contains(installDirectory, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var crashMatch = LauncherCrashRegex.Match(line);
+                if (!crashMatch.Success)
+                {
+                    continue;
+                }
+
+                var exitCode = crashMatch.Groups["code"].Value.Trim();
+                yield return new CombatLogEntry(
+                    timestamp,
+                    CombatEventKind.AbnormalExit,
+                    "游戏异常退出",
+                    $"退出码：{exitCode}",
+                    $"渠道：{currentChannel} | 来源：Launcher",
+                    $"launcher-crash|{timestamp:O}|{exitCode}");
+            }
         }
 
         private static IEnumerable<string> EnumerateCombatLogFiles(string gameLogPath, string installDirectory)
@@ -261,7 +364,7 @@ namespace StarCitizenOverLay
             }
         }
 
-        private static CombatLogEntry? ParseCombatLogEntry(string line, string playerName)
+        private static CombatLogEntry? ParseActorDeathEntry(string line, string playerName)
         {
             var match = ActorDeathRegex.Match(line);
             if (!match.Success)
@@ -281,35 +384,197 @@ namespace StarCitizenOverLay
                 return null;
             }
 
-            if (victim.Equals(playerName, StringComparison.OrdinalIgnoreCase) &&
-                killer.Equals(playerName, StringComparison.OrdinalIgnoreCase))
+            var weaponName = NormalizeDisplayValue(match.Groups["weapon"].Value, "未知武器");
+            var damageType = NormalizeDisplayValue(match.Groups["damageType"].Value, "未知伤害");
+            var zoneName = NormalizeDisplayValue(match.Groups["zone"].Value, "未知区域");
+
+            var victimIsLocal = victim.Equals(playerName, StringComparison.OrdinalIgnoreCase);
+            var killerIsLocal = killer.Equals(playerName, StringComparison.OrdinalIgnoreCase);
+            if (!victimIsLocal && !killerIsLocal)
             {
                 return null;
             }
 
-            CombatEventKind? kind = null;
-            if (killer.Equals(playerName, StringComparison.OrdinalIgnoreCase))
+            if (victimIsLocal && killerIsLocal && damageType.Equals("Suicide", StringComparison.OrdinalIgnoreCase))
             {
-                kind = CombatEventKind.Kill;
-            }
-            else if (victim.Equals(playerName, StringComparison.OrdinalIgnoreCase))
-            {
-                kind = CombatEventKind.Death;
+                return new CombatLogEntry(
+                    timestamp,
+                    CombatEventKind.Suicide,
+                    "自杀",
+                    $"伤害：{damageType} | 武器：{weaponName}",
+                    $"区域：{zoneName}",
+                    $"actor-suicide|{timestamp:O}|{zoneName}");
             }
 
-            if (kind is null)
+            if (victimIsLocal && IsCrashDamageType(damageType))
             {
-                return null;
+                return new CombatLogEntry(
+                    timestamp,
+                    CombatEventKind.Crash,
+                    "坠毁死亡",
+                    $"伤害：{damageType} | 来源：{killer}",
+                    $"区域：{zoneName}",
+                    $"actor-crash|{timestamp:O}|{killer}|{damageType}|{zoneName}");
+            }
+
+            if (killerIsLocal)
+            {
+                return new CombatLogEntry(
+                    timestamp,
+                    CombatEventKind.Kill,
+                    $"击杀 {victim}",
+                    $"武器：{weaponName} | 伤害：{damageType}",
+                    $"区域：{zoneName}",
+                    $"actor-kill|{timestamp:O}|{victim}|{weaponName}|{damageType}");
             }
 
             return new CombatLogEntry(
                 timestamp,
-                kind.Value,
-                killer,
-                victim,
-                NormalizeDisplayValue(match.Groups["weapon"].Value, "未知武器"),
-                NormalizeDisplayValue(match.Groups["damageType"].Value, "未知伤害"),
-                NormalizeDisplayValue(match.Groups["zone"].Value, "未知区域"));
+                CombatEventKind.Death,
+                $"被 {killer} 击杀",
+                $"武器：{weaponName} | 伤害：{damageType}",
+                $"区域：{zoneName}",
+                $"actor-death|{timestamp:O}|{killer}|{weaponName}|{damageType}");
+        }
+
+        private static CombatLogEntry? ParseDisconnectEntry(string line, string playerName)
+        {
+            var match = ChannelDisconnectedRegex.Match(line);
+            if (!match.Success)
+            {
+                return null;
+            }
+
+            var name = NormalizePlayerName(match.Groups["name"].Value);
+            if (!string.Equals(name, playerName, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if (!DateTimeOffset.TryParse(match.Groups["timestamp"].Value, out var timestamp))
+            {
+                return null;
+            }
+
+            var reason = match.Groups["reason"].Value.Trim();
+            if (reason.Equals("Nub destroyed", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            var cause = match.Groups["cause"].Value.Trim();
+            var normalizedReason = NormalizeDisconnectReason(reason);
+            var kind = IsLogoutReason(reason) ? CombatEventKind.Logout : CombatEventKind.Disconnect;
+            var headline = kind == CombatEventKind.Logout ? "退出当前会话" : "连接断开";
+
+            return new CombatLogEntry(
+                timestamp,
+                kind,
+                headline,
+                $"原因：{normalizedReason}",
+                $"代码：{cause} | 来源：Game.log",
+                $"disconnect|{timestamp:O}|{kind}|{cause}|{normalizedReason}");
+        }
+
+        private static CombatLogEntry? ParseSystemQuitEntry(string line)
+        {
+            var match = SystemQuitRegex.Match(line);
+            if (!match.Success)
+            {
+                return null;
+            }
+
+            if (!DateTimeOffset.TryParse(match.Groups["timestamp"].Value, out var timestamp))
+            {
+                return null;
+            }
+
+            var reason = match.Groups["reason"].Value.Trim();
+            var cause = match.Groups["cause"].Value.Trim();
+            var exitCode = match.Groups["exitCode"].Value.Trim();
+            var isNormalExit = exitCode == "0";
+            var kind = isNormalExit ? CombatEventKind.Logout : CombatEventKind.AbnormalExit;
+            var headline = isNormalExit ? "退出游戏" : "游戏异常退出";
+
+            return new CombatLogEntry(
+                timestamp,
+                kind,
+                headline,
+                $"原因：{NormalizeSystemQuitReason(reason)} | 退出码：{exitCode}",
+                $"代码：{cause} | 来源：Game.log",
+                $"system-quit|{timestamp:O}|{kind}|{cause}|{exitCode}|{reason}");
+        }
+
+        private static bool TryParseLauncherTimestamp(string line, out DateTimeOffset timestamp)
+        {
+            timestamp = default;
+
+            var match = LauncherTimestampRegex.Match(line);
+            if (!match.Success)
+            {
+                return false;
+            }
+
+            var rawValue = match.Groups["timestamp"].Value.Trim();
+            if (DateTimeOffset.TryParse(rawValue, out timestamp))
+            {
+                return true;
+            }
+
+            if (!DateTime.TryParse(rawValue, out var localDateTime))
+            {
+                return false;
+            }
+
+            timestamp = new DateTimeOffset(DateTime.SpecifyKind(localDateTime, DateTimeKind.Local));
+            return true;
+        }
+
+        private static bool IsCrashDamageType(string damageType)
+        {
+            return damageType.Equals("Crash", StringComparison.OrdinalIgnoreCase) ||
+                   damageType.Equals("Collision", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsLogoutReason(string reason)
+        {
+            return reason.Contains("Player requested disconnect", StringComparison.OrdinalIgnoreCase) ||
+                   reason.Contains("ExitToMenu", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string NormalizeDisconnectReason(string reason)
+        {
+            if (reason.Contains("Player requested disconnect", StringComparison.OrdinalIgnoreCase))
+            {
+                return "玩家主动请求断开连接";
+            }
+
+            if (reason.Contains("ExitToMenu", StringComparison.OrdinalIgnoreCase))
+            {
+                return "返回主菜单";
+            }
+
+            if (reason.Contains("DGS disconnecting all channels before game shutdown", StringComparison.OrdinalIgnoreCase))
+            {
+                return "服务器关闭前断开全部连接";
+            }
+
+            return reason;
+        }
+
+        private static string NormalizeSystemQuitReason(string reason)
+        {
+            if (reason.Equals("User closed the application", StringComparison.OrdinalIgnoreCase))
+            {
+                return "用户关闭了游戏";
+            }
+
+            if (reason.Equals("Quit via console command", StringComparison.OrdinalIgnoreCase))
+            {
+                return "通过命令触发退出";
+            }
+
+            return reason;
         }
 
         private static IEnumerable<string> ReadLinesShared(string path)
@@ -357,13 +622,12 @@ namespace StarCitizenOverLay
         {
             public CombatLogEntryViewModel(CombatLogEntry entry)
             {
-                BadgeText = entry.Kind == CombatEventKind.Kill ? "击杀" : "死亡";
-                BadgeBackground = entry.Kind == CombatEventKind.Kill ? "#FF2D9D68" : "#FFB24B5A";
-                Headline = entry.Kind == CombatEventKind.Kill
-                    ? $"击杀 {entry.Victim}"
-                    : $"被 {entry.Killer} 击杀";
-                DetailLine = $"武器：{entry.WeaponName} | 伤害：{entry.DamageType}";
-                MetaLine = $"时间：{entry.Timestamp.LocalDateTime:MM-dd HH:mm:ss} | 区域：{entry.ZoneName}";
+                var style = GetBadgeStyle(entry.Kind);
+                BadgeText = style.Text;
+                BadgeBackground = style.Background;
+                Headline = entry.Headline;
+                DetailLine = entry.DetailLine;
+                MetaLine = $"时间：{entry.Timestamp.LocalDateTime:MM-dd HH:mm:ss} | {entry.ContextLine}";
             }
 
             public string BadgeText { get; }
@@ -375,6 +639,22 @@ namespace StarCitizenOverLay
             public string DetailLine { get; }
 
             public string MetaLine { get; }
+
+            private static (string Text, string Background) GetBadgeStyle(CombatEventKind kind)
+            {
+                return kind switch
+                {
+                    CombatEventKind.Kill => ("击杀", "#FF2D9D68"),
+                    CombatEventKind.Death => ("死亡", "#FFB24B5A"),
+                    CombatEventKind.Suicide => ("自杀", "#FFC9892F"),
+                    CombatEventKind.Crash => ("坠毁", "#FFD66B3B"),
+                    CombatEventKind.Login => ("上线", "#FF1776A8"),
+                    CombatEventKind.Logout => ("下线", "#FF6B7C8F"),
+                    CombatEventKind.Disconnect => ("断线", "#FFC44F7A"),
+                    CombatEventKind.AbnormalExit => ("崩溃", "#FFB13C3C"),
+                    _ => ("事件", "#FF1776A8")
+                };
+            }
         }
 
         private sealed class CombatLogSnapshot
@@ -473,40 +753,42 @@ namespace StarCitizenOverLay
             public CombatLogEntry(
                 DateTimeOffset timestamp,
                 CombatEventKind kind,
-                string killer,
-                string victim,
-                string weaponName,
-                string damageType,
-                string zoneName)
+                string headline,
+                string detailLine,
+                string contextLine,
+                string deduplicationKey)
             {
                 Timestamp = timestamp;
                 Kind = kind;
-                Killer = killer;
-                Victim = victim;
-                WeaponName = weaponName;
-                DamageType = damageType;
-                ZoneName = zoneName;
+                Headline = headline;
+                DetailLine = detailLine;
+                ContextLine = contextLine;
+                DeduplicationKey = deduplicationKey;
             }
 
             public DateTimeOffset Timestamp { get; }
 
             public CombatEventKind Kind { get; }
 
-            public string Killer { get; }
+            public string Headline { get; }
 
-            public string Victim { get; }
+            public string DetailLine { get; }
 
-            public string WeaponName { get; }
+            public string ContextLine { get; }
 
-            public string DamageType { get; }
-
-            public string ZoneName { get; }
+            public string DeduplicationKey { get; }
         }
 
         public enum CombatEventKind
         {
             Kill,
-            Death
+            Death,
+            Suicide,
+            Crash,
+            Login,
+            Logout,
+            Disconnect,
+            AbnormalExit
         }
     }
 }
