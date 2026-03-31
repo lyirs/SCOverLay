@@ -427,9 +427,10 @@
                                                 Padding="8,2"
                                                 Background="#55314B63"
                                                 CornerRadius="8">
-                                            <TextBlock Foreground="#FF8ED0F7"
+                                            <TextBlock x:Name="SelectedDetailVersionText"
+                                                       Foreground="#FF8ED0F7"
                                                        FontSize="11"
-                                                       Text="搜索结果摘要" />
+                                                       Text="等待详情" />
                                         </Border>
                                     </DockPanel>
                                     <Border Margin="0,12,0,0"
@@ -466,6 +467,12 @@
                                                        Foreground="#FFD9E7F3"
                                                        TextWrapping="Wrap"
                                                        Text="执行搜索后会自动选中第一条结果。" />
+                                            <TextBlock x:Name="SelectedDetailStatusText"
+                                                       Margin="0,10,0,0"
+                                                       Foreground="#FF8ED0F7"
+                                                       FontSize="12"
+                                                       TextWrapping="Wrap"
+                                                       Text="选择左侧结果后加载详情。" />
                                         </StackPanel>
                                     </Border>
 
@@ -473,61 +480,51 @@
                                                Foreground="#FF8ED0F7"
                                                FontSize="12"
                                                FontWeight="Bold"
-                                               Text="基础信息" />
+                                               Text="详细字段" />
                                     <Border Margin="0,8,0,0"
                                             Background="#40131D29"
                                             BorderBrush="#553D617B"
                                             BorderThickness="1"
                                             CornerRadius="12">
-                                        <Grid>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                            </Grid.RowDefinitions>
-
-                                            <Grid Grid.Row="0"
-                                                  Margin="0">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="92" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Margin="14,12,10,12"
-                                                           Foreground="#FF8ED0F7"
-                                                           FontSize="12"
-                                                           Text="属性摘要" />
-                                                <TextBlock x:Name="SelectedResultMetaText"
-                                                           Grid.Column="1"
-                                                           Margin="0,12,14,12"
-                                                           Foreground="White"
-                                                           FontSize="12"
-                                                           TextWrapping="Wrap"
-                                                           Text="输入关键词后按回车搜索，也可以用上下方向键切换当前项。" />
-                                            </Grid>
-
-                                            <Border Grid.Row="1"
-                                                    Height="1"
-                                                    Margin="14,0"
-                                                    Background="#223D617B" />
-
-                                            <Grid Grid.Row="2"
-                                                  Margin="0">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="92" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Margin="14,12,10,12"
-                                                           Foreground="#FF8ED0F7"
-                                                           FontSize="12"
-                                                           Text="特殊标记" />
-                                                <TextBlock x:Name="SelectedResultFlagsText"
-                                                           Grid.Column="1"
-                                                           Margin="0,12,14,12"
-                                                           Foreground="#FFD9E7F3"
-                                                           FontSize="12"
-                                                           TextWrapping="Wrap"
-                                                           Text="特殊标记：暂无" />
-                                            </Grid>
+                                        <Grid Margin="14,12,14,12">
+                                            <ItemsControl ItemsSource="{Binding SelectedDetailSections}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Margin="0,0,0,12">
+                                                            <TextBlock Foreground="#FF8ED0F7"
+                                                                       FontSize="12"
+                                                                       FontWeight="Bold"
+                                                                       Text="{Binding Title}" />
+                                                            <ItemsControl Margin="0,8,0,0"
+                                                                          ItemsSource="{Binding Items}">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <Grid Margin="0,0,0,8">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="92" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Foreground="#FF8ED0F7"
+                                                                                       FontSize="12"
+                                                                                       Text="{Binding Label}" />
+                                                                            <TextBlock Grid.Column="1"
+                                                                                       Foreground="White"
+                                                                                       FontSize="12"
+                                                                                       TextWrapping="Wrap"
+                                                                                       Text="{Binding Value}" />
+                                                                        </Grid>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock x:Name="SelectedDetailFieldsEmptyText"
+                                                       Foreground="#FFD9E7F3"
+                                                       FontSize="12"
+                                                       TextWrapping="Wrap"
+                                                       Text="选择左侧结果后查看详细字段。" />
                                         </Grid>
                                     </Border>
 
@@ -535,18 +532,100 @@
                                                Foreground="#FF8ED0F7"
                                                FontSize="12"
                                                FontWeight="Bold"
-                                               Text="搜索上下文" />
+                                               Text="获取方式" />
                                     <Border Margin="0,8,0,0"
-                                            Padding="14,12"
                                             Background="#40131D29"
                                             BorderBrush="#553D617B"
                                             BorderThickness="1"
                                             CornerRadius="12">
-                                        <TextBlock x:Name="SelectedResultFooterText"
-                                                   Foreground="#FFD9E7F3"
-                                                   FontSize="12"
-                                                   TextWrapping="Wrap"
-                                                   Text="-" />
+                                        <StackPanel Margin="14,12,14,12">
+                                            <ItemsControl x:Name="SelectedDetailTagsList"
+                                                          ItemsSource="{Binding SelectedDetailTags}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Margin="0,0,8,8"
+                                                                Padding="8,2"
+                                                                Background="#66314B63"
+                                                                CornerRadius="8">
+                                                            <TextBlock Foreground="#FF8ED0F7"
+                                                                       FontSize="12"
+                                                                       Text="{Binding}" />
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock x:Name="SelectedDetailTagsEmptyText"
+                                                       Foreground="#FFD9E7F3"
+                                                       FontSize="12"
+                                                       TextWrapping="Wrap"
+                                                       Text="当前没有特殊获取标签。" />
+                                            <TextBlock x:Name="SelectedDetailAccessText"
+                                                       Margin="0,10,0,0"
+                                                       Foreground="#FFD9E7F3"
+                                                       FontSize="12"
+                                                       TextWrapping="Wrap"
+                                                       Text="暂无获取提示。" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <TextBlock Margin="0,14,0,0"
+                                               Foreground="#FF8ED0F7"
+                                               FontSize="12"
+                                               FontWeight="Bold"
+                                               Text="价格信息" />
+                                    <Border Margin="0,8,0,0"
+                                            Background="#40131D29"
+                                            BorderBrush="#553D617B"
+                                            BorderThickness="1"
+                                            CornerRadius="12">
+                                        <StackPanel Margin="14,12,14,12">
+                                            <TextBlock x:Name="SelectedDetailPriceSummaryText"
+                                                       Foreground="White"
+                                                       FontSize="12"
+                                                       TextWrapping="Wrap"
+                                                       Text="暂无价格信息。" />
+                                            <ItemsControl ItemsSource="{Binding SelectedDetailPriceGroups}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Margin="0,10,0,0"
+                                                                Padding="10"
+                                                                Background="#331A2533"
+                                                                BorderBrush="#333D617B"
+                                                                BorderThickness="1"
+                                                                CornerRadius="10">
+                                                            <StackPanel>
+                                                                <DockPanel LastChildFill="False">
+                                                                    <TextBlock Foreground="White"
+                                                                               FontSize="13"
+                                                                               FontWeight="SemiBold"
+                                                                               Text="{Binding PriceText}" />
+                                                                    <TextBlock DockPanel.Dock="Right"
+                                                                               Foreground="#FF8ED0F7"
+                                                                               FontSize="12"
+                                                                               Text="{Binding VersionText}" />
+                                                                </DockPanel>
+                                                                <TextBlock Margin="0,6,0,0"
+                                                                           Foreground="#FFD9E7F3"
+                                                                           FontSize="12"
+                                                                           TextWrapping="Wrap"
+                                                                           Text="{Binding LocationsText}" />
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock x:Name="SelectedDetailPriceEmptyText"
+                                                       Margin="0,10,0,0"
+                                                       Foreground="#FFD9E7F3"
+                                                       FontSize="12"
+                                                       TextWrapping="Wrap"
+                                                       Text="当前没有可展示的价格分组。" />
+                                        </StackPanel>
                                     </Border>
                                 </StackPanel>
                             </ScrollViewer>
