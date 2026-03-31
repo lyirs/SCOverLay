@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
+using Forms = System.Windows.Forms;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
@@ -45,8 +46,11 @@ namespace StarCitizenOverLay
         private System.IntPtr _windowHandle;
         private System.Windows.Interop.HwndSource? _hwndSource;
         private readonly System.Windows.Threading.DispatcherTimer _monitorSyncTimer;
+        private readonly Forms.NotifyIcon _notifyIcon;
+        private readonly Forms.ToolStripMenuItem _toggleOverlayMenuItem;
         private bool _isInteractive = true;
         private bool _isOverlayVisible = true;
+        private bool _isExiting;
         private bool _interactionHotKeyRegistered;
         private bool _visibilityHotKeyRegistered;
         private const int MaxDisplayedResults = 8;
@@ -69,8 +73,28 @@ namespace StarCitizenOverLay
                 Interval = TimeSpan.FromSeconds(2)
             };
             _monitorSyncTimer.Tick += MonitorSyncTimer_Tick;
+            _toggleOverlayMenuItem = new Forms.ToolStripMenuItem("隐藏 Overlay");
+            _toggleOverlayMenuItem.Click += ToggleOverlayMenuItem_Click;
+
+            var exitMenuItem = new Forms.ToolStripMenuItem("退出程序");
+            exitMenuItem.Click += ExitMenuItem_Click;
+
+            var trayMenu = new Forms.ContextMenuStrip();
+            trayMenu.Items.Add(_toggleOverlayMenuItem);
+            trayMenu.Items.Add(new Forms.ToolStripSeparator());
+            trayMenu.Items.Add(exitMenuItem);
+
+            _notifyIcon = new Forms.NotifyIcon
+            {
+                Text = "Star Citizen Overlay",
+                Icon = LoadNotifyIcon(),
+                ContextMenuStrip = trayMenu,
+                Visible = true
+            };
+            _notifyIcon.DoubleClick += NotifyIcon_DoubleClick;
             SourceInitialized += MainWindow_SourceInitialized;
             Loaded += MainWindow_Loaded;
+            Closing += MainWindow_Closing;
             Closed += MainWindow_Closed;
         }
 
@@ -110,6 +134,8 @@ namespace StarCitizenOverLay
         private void MainWindow_Closed(object? sender, System.EventArgs e)
         {
             _monitorSyncTimer.Stop();
+            _notifyIcon.Visible = false;
+            _notifyIcon.Dispose();
 
             if (_interactionHotKeyRegistered)
             {
@@ -124,6 +150,17 @@ namespace StarCitizenOverLay
             _hwndSource?.RemoveHook(WndProc);
         }
 
+        private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (_isExiting)
+            {
+                return;
+            }
+
+            e.Cancel = true;
+            HideOverlayToTray();
+        }
+
         private void MonitorSyncTimer_Tick(object? sender, EventArgs e)
         {
             if (!_isOverlayVisible)
@@ -132,6 +169,23 @@ namespace StarCitizenOverLay
             }
 
             UpdateOverlayTargetBounds();
+        }
+
+        private void NotifyIcon_DoubleClick(object? sender, EventArgs e)
+        {
+            ToggleOverlayVisibility();
+        }
+
+        private void ToggleOverlayMenuItem_Click(object? sender, EventArgs e)
+        {
+            ToggleOverlayVisibility();
+        }
+
+        private void ExitMenuItem_Click(object? sender, EventArgs e)
+        {
+            _isExiting = true;
+            _notifyIcon.Visible = false;
+            Close();
         }
 
         private void OverlayPanel_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -147,7 +201,7 @@ namespace StarCitizenOverLay
             await ExecuteSearchAsync();
         }
 
-        private async void SearchQueryTextBox_KeyDown(object sender, KeyEventArgs e)
+        private async void SearchQueryTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
             {
@@ -167,16 +221,50 @@ namespace StarCitizenOverLay
         {
             if (_isOverlayVisible)
             {
-                Hide();
-                _isOverlayVisible = false;
+                HideOverlayToTray();
                 return;
             }
 
+            RestoreOverlayFromTray();
+        }
+
+        private void HideOverlayToTray()
+        {
+            Hide();
+            _isOverlayVisible = false;
+            UpdateTrayMenuText();
+        }
+
+        private void RestoreOverlayFromTray()
+        {
             UpdateOverlayTargetBounds();
             Show();
+            Activate();
             Topmost = true;
             _isOverlayVisible = true;
             ApplyInteractionMode();
+            UpdateTrayMenuText();
+        }
+
+        private void UpdateTrayMenuText()
+        {
+            _toggleOverlayMenuItem.Text = _isOverlayVisible ? "隐藏 Overlay" : "显示 Overlay";
+        }
+
+        private static System.Drawing.Icon LoadNotifyIcon()
+        {
+            var resourceInfo = System.Windows.Application.GetResourceStream(new Uri("Assets/AppIcon.ico", UriKind.Relative));
+            if (resourceInfo is null)
+            {
+                throw new InvalidOperationException("未找到内置图标资源 Assets/AppIcon.ico。");
+            }
+
+            using var iconStream = resourceInfo.Stream;
+            using var memoryStream = new MemoryStream();
+            iconStream.CopyTo(memoryStream);
+            memoryStream.Position = 0;
+            using var icon = new System.Drawing.Icon(memoryStream);
+            return (System.Drawing.Icon)icon.Clone();
         }
 
         private void UpdateOverlayTargetBounds()

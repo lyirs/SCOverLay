@@ -6,6 +6,7 @@
         xmlns:local="clr-namespace:StarCitizenOverLay"
         mc:Ignorable="d"
         Title="星际公民 Overlay"
+        Icon="Assets/AppIcon.ico"
         Width="1280"
         Height="720"
         WindowStyle="None"
