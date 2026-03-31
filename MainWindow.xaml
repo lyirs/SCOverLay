@@ -66,7 +66,11 @@
                             <TextBlock Margin="0,10,0,0"
                                        Foreground="#FF8ED0F7"
                                        FontSize="12"
-                                       Text="快捷键：Alt + Shift + S" />
+                                       Text="交互切换：Alt + Shift + S" />
+                            <TextBlock Margin="0,6,0,0"
+                                       Foreground="#FF8ED0F7"
+                                       FontSize="12"
+                                       Text="显示隐藏：Alt + Shift + O" />
                         </StackPanel>
                     </Border>
 

@@ -26,7 +26,8 @@ namespace StarCitizenOverLay
     public partial class MainWindow : Window
     {
         private const double OverlayMargin = 24;
-        private const int HotKeyId = 9000;
+        private const int InteractionHotKeyId = 9000;
+        private const int VisibilityHotKeyId = 9001;
         private const uint ModAlt = 0x0001;
         private const uint ModShift = 0x0004;
         private const int WmHotKey = 0x0312;
@@ -40,7 +41,9 @@ namespace StarCitizenOverLay
         private System.IntPtr _windowHandle;
         private System.Windows.Interop.HwndSource? _hwndSource;
         private bool _isInteractive = true;
-        private bool _hotKeyRegistered;
+        private bool _isOverlayVisible = true;
+        private bool _interactionHotKeyRegistered;
+        private bool _visibilityHotKeyRegistered;
         private const int MaxDisplayedResults = 8;
         private static readonly HttpClient SearchHttpClient = new();
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -82,20 +85,30 @@ namespace StarCitizenOverLay
             _hwndSource = System.Windows.Interop.HwndSource.FromHwnd(_windowHandle);
             _hwndSource?.AddHook(WndProc);
 
-            _hotKeyRegistered = RegisterHotKey(
+            _interactionHotKeyRegistered = RegisterHotKey(
                 _windowHandle,
-                HotKeyId,
+                InteractionHotKeyId,
                 ModAlt | ModShift,
                 (uint)KeyInterop.VirtualKeyFromKey(Key.S));
+            _visibilityHotKeyRegistered = RegisterHotKey(
+                _windowHandle,
+                VisibilityHotKeyId,
+                ModAlt | ModShift,
+                (uint)KeyInterop.VirtualKeyFromKey(Key.O));
 
             ApplyInteractionMode();
         }
 
         private void MainWindow_Closed(object? sender, System.EventArgs e)
         {
-            if (_hotKeyRegistered)
+            if (_interactionHotKeyRegistered)
             {
-                UnregisterHotKey(_windowHandle, HotKeyId);
+                UnregisterHotKey(_windowHandle, InteractionHotKeyId);
+            }
+
+            if (_visibilityHotKeyRegistered)
+            {
+                UnregisterHotKey(_windowHandle, VisibilityHotKeyId);
             }
 
             _hwndSource?.RemoveHook(WndProc);
@@ -128,6 +141,21 @@ namespace StarCitizenOverLay
             _isInteractive = !_isInteractive;
             ApplyInteractionMode();
             UpdateInteractionStatus();
+        }
+
+        private void ToggleOverlayVisibility()
+        {
+            if (_isOverlayVisible)
+            {
+                Hide();
+                _isOverlayVisible = false;
+                return;
+            }
+
+            Show();
+            Topmost = true;
+            _isOverlayVisible = true;
+            ApplyInteractionMode();
         }
 
         private void ApplyInteractionMode()
@@ -164,16 +192,16 @@ namespace StarCitizenOverLay
             if (_isInteractive)
             {
                 InteractionModeText.Text = "可交互";
-                InteractionDescriptionText.Text = _hotKeyRegistered
+                InteractionDescriptionText.Text = _interactionHotKeyRegistered
                     ? "当前是全屏透明宿主层。可交互模式下可以点击面板内容。"
-                    : "窗口当前可接收鼠标输入，但快捷键注册失败，暂时无法切换模式。";
+                    : "窗口当前可接收鼠标输入，但交互切换热键注册失败。";
             }
             else
             {
                 InteractionModeText.Text = "鼠标穿透";
-                InteractionDescriptionText.Text = _hotKeyRegistered
+                InteractionDescriptionText.Text = _interactionHotKeyRegistered
                     ? "鼠标点击会直接穿过悬浮层。按 Alt + Shift + S 可以恢复交互。"
-                    : "鼠标点击会直接穿过悬浮层，但快捷键注册失败。";
+                    : "鼠标点击会直接穿过悬浮层，但交互切换热键注册失败。";
             }
         }
 
@@ -322,9 +350,19 @@ namespace StarCitizenOverLay
             System.IntPtr lParam,
             ref bool handled)
         {
-            if (msg == WmHotKey && wParam.ToInt32() == HotKeyId)
+            if (msg != WmHotKey)
+            {
+                return System.IntPtr.Zero;
+            }
+
+            if (wParam.ToInt32() == InteractionHotKeyId)
             {
                 ToggleInteractionMode();
+                handled = true;
+            }
+            else if (wParam.ToInt32() == VisibilityHotKeyId)
+            {
+                ToggleOverlayVisibility();
                 handled = true;
             }
 
