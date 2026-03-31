@@ -1,0 +1,666 @@
+@namespace StarCitizenOverLay
+@using System.Text.Json
+@inject OverlaySearchApiService ApiService
+
+<div style="height:100%;padding:18px;box-sizing:border-box;color:#f7fbff;font-family:'Segoe UI','Microsoft YaHei UI',sans-serif;">
+    <div style="height:100%;display:grid;grid-template-rows:auto 1fr;gap:14px;">
+        <section style="border:1px solid rgba(52,176,230,.72);border-radius:16px;background:linear-gradient(180deg,rgba(17,31,45,.92),rgba(8,17,26,.86));padding:16px;box-sizing:border-box;">
+            <div style="color:#8fd8fb;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Blazor Search Panel</div>
+            <div style="margin-top:8px;font-size:24px;font-weight:700;line-height:1.1;">物品搜索与基础详情</div>
+            <div style="margin-top:8px;color:#dcebf7;font-size:13px;line-height:1.7;">
+                这一版先恢复真正可用的搜索链路：搜索输入、分类结果、当前选中项，以及基础详情摘要。价格和更复杂的卡片我们下一轮再接回来。
+            </div>
+
+            <div style="margin-top:14px;display:grid;grid-template-columns:1fr 120px;gap:12px;">
+                <input style="height:42px;padding:0 14px;border-radius:12px;border:1px solid rgba(52,176,230,.72);background:rgba(9,19,29,.92);color:#f7fbff;font-size:17px;outline:none;"
+                       @bind="_query"
+                       placeholder="输入关键词，例如 VK-00、Gold、视差"
+                       disabled="@(!ApiService.HasConfiguration || _isSearching)" />
+                <button type="button"
+                        style="height:42px;border-radius:12px;border:1px solid rgba(52,176,230,.72);background:linear-gradient(180deg,#2287bd,#17678f);color:#fff;font-size:14px;font-weight:700;cursor:pointer;"
+                        @onclick="SearchAsync"
+                        disabled="@(!ApiService.HasConfiguration || _isSearching)">
+                    @(_isSearching ? "搜索中..." : "搜索")
+                </button>
+            </div>
+
+            @if (!ApiService.HasConfiguration)
+            {
+                <div style="margin-top:12px;padding:10px 12px;border-radius:12px;background:rgba(94,48,18,.28);border:1px solid rgba(255,183,136,.25);color:#ffcca8;font-size:12px;line-height:1.6;">
+                    缺少 API_BASE_URL。请检查项目根目录的 <code>.env</code> 配置，然后重新启动程序。
+                </div>
+            }
+
+            <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <div style="padding:4px 10px;border-radius:999px;background:rgba(28,63,85,.72);color:#dff5ff;font-size:12px;">@_searchStatus</div>
+                <div style="color:#9bd7f8;font-size:12px;">@_searchSummary</div>
+            </div>
+        </section>
+
+        <div style="min-height:0;display:grid;grid-template-columns:minmax(0,0.92fr) minmax(0,1.08fr);gap:14px;">
+            <section style="min-height:0;border:1px solid rgba(52,176,230,.72);border-radius:16px;background:linear-gradient(180deg,rgba(17,31,45,.92),rgba(8,17,26,.86));overflow:hidden;display:grid;grid-template-rows:auto 1fr;">
+                <div style="padding:14px;border-bottom:1px solid rgba(61,97,123,.25);">
+                    <div style="color:#8fd8fb;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Search Results</div>
+                    <div style="margin-top:6px;font-size:17px;font-weight:700;">按分类分组的候选结果</div>
+                </div>
+
+                <div style="min-height:0;overflow:auto;padding:14px;">
+                    @if (_groups.Count == 0)
+                    {
+                        <div style="padding:16px;border-radius:14px;border:1px dashed rgba(92,135,163,.42);background:rgba(13,25,36,.36);color:#dcebf7;font-size:13px;line-height:1.7;">@GetEmptyText()</div>
+                    }
+                    else
+                    {
+                        @foreach (var group in _groups)
+                        {
+                            <div style="margin-bottom:16px;" @key="group.CategoryLabel">
+                                <div style="margin-bottom:10px;display:flex;justify-content:space-between;gap:12px;color:#8fd8fb;font-size:12px;font-weight:700;">
+                                    <span>@group.CategoryLabel</span>
+                                    <span>@group.Items.Count 条</span>
+                                </div>
+
+                                @foreach (var item in group.Items)
+                                {
+                                    <button type="button"
+                                            @key="@($"{item.CategoryKey}:{item.Id}")"
+                                            @onclick="@(() => SelectItemAsync(item))"
+                                            style="@GetItemStyle(item)">
+                                        <div style="font-size:17px;font-weight:700;line-height:1.25;">@GetPrimaryName(item)</div>
+                                        <div style="margin-top:6px;color:#dcebf7;font-size:12px;line-height:1.5;white-space:pre-line;">@BuildItemSubtitle(item)</div>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            </section>
+
+            <section style="min-height:0;border:1px solid rgba(52,176,230,.72);border-radius:16px;background:linear-gradient(180deg,rgba(17,31,45,.92),rgba(8,17,26,.86));overflow:auto;padding:14px;">
+                <div style="color:#8fd8fb;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Detail Panel</div>
+                <div style="margin-top:6px;font-size:17px;font-weight:700;">当前选中结果</div>
+
+                <div style="margin-top:12px;padding:16px;border-radius:16px;border:1px solid rgba(63,100,127,.35);background:linear-gradient(180deg,rgba(23,38,53,.78),rgba(15,25,36,.84));">
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                        <span style="padding:4px 9px;border-radius:999px;background:rgba(44,169,225,.12);border:1px solid rgba(44,169,225,.18);color:#8fd8fb;font-size:11px;font-weight:700;">@_detailCategory</span>
+                        <span style="padding:4px 9px;border-radius:999px;background:rgba(44,169,225,.12);border:1px solid rgba(44,169,225,.18);color:#8fd8fb;font-size:11px;font-weight:700;">@_detailSourceType</span>
+                    </div>
+                    <div style="margin-top:12px;font-size:28px;font-weight:700;line-height:1.08;">@_detailTitle</div>
+                    <div style="margin-top:10px;color:#dcebf7;font-size:13px;line-height:1.7;white-space:pre-line;">@_detailSubtitle</div>
+                    <div style="margin-top:8px;color:#8fd8fb;font-size:12px;line-height:1.6;">@_detailStatus</div>
+                </div>
+
+                <div style="margin-top:14px;padding:14px;border-radius:14px;border:1px solid rgba(61,97,123,.28);background:rgba(14,24,35,.46);">
+                    <div style="color:#8fd8fb;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;">基础信息</div>
+
+                    @if (_overview.Count == 0)
+                    {
+                        <div style="margin-top:10px;display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;">
+                            <div style="color:#8fd8fb;font-size:12px;">状态</div>
+                            <div style="color:#fff;font-size:12px;line-height:1.6;">选择左侧结果后查看基础字段。</div>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var field in _overview)
+                        {
+                            <div style="margin-top:10px;display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;" @key="field.Label">
+                                <div style="color:#8fd8fb;font-size:12px;">@field.Label</div>
+                                <div style="color:#fff;font-size:12px;line-height:1.6;white-space:pre-line;word-break:break-word;">@field.Value</div>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <div style="margin-top:14px;padding:14px;border-radius:14px;border:1px solid rgba(61,97,123,.28);background:rgba(14,24,35,.46);">
+                    <div style="color:#8fd8fb;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;">详情分组摘要</div>
+
+                    @if (_detailGroups.Count == 0)
+                    {
+                        <div style="margin-top:10px;display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;">
+                            <div style="color:#8fd8fb;font-size:12px;">状态</div>
+                            <div style="color:#fff;font-size:12px;line-height:1.6;">当前还没有可展示的详情分组。</div>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var detailGroup in _detailGroups)
+                        {
+                            <div style="margin-top:10px;display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;" @key="detailGroup.Key">
+                                <div style="color:#8fd8fb;font-size:12px;">@detailGroup.Title</div>
+                                <div style="color:#fff;font-size:12px;line-height:1.6;white-space:pre-line;word-break:break-word;">@detailGroup.Summary</div>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <div style="margin-top:14px;padding:14px;border-radius:14px;border:1px solid rgba(61,97,123,.28);background:rgba(14,24,35,.46);">
+                    <div style="color:#8fd8fb;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;">价格信息</div>
+                    <div style="margin-top:8px;color:#8fd8fb;font-size:12px;line-height:1.6;">@_priceStatus</div>
+
+                    @if (_priceOverview.Count == 0)
+                    {
+                        <div style="margin-top:10px;display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;">
+                            <div style="color:#8fd8fb;font-size:12px;">状态</div>
+                            <div style="color:#fff;font-size:12px;line-height:1.6;">当前还没有可展示的价格摘要。</div>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var field in _priceOverview)
+                        {
+                            <div style="margin-top:10px;display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;" @key="@($"price-overview:{field.Label}")">
+                                <div style="color:#8fd8fb;font-size:12px;">@field.Label</div>
+                                <div style="color:#fff;font-size:12px;line-height:1.6;white-space:pre-line;word-break:break-word;">@field.Value</div>
+                            </div>
+                        }
+                    }
+
+                    @if (_priceGroups.Count > 0)
+                    {
+                        <div style="margin-top:12px;display:grid;gap:10px;">
+                            @foreach (var priceGroup in _priceGroups)
+                            {
+                                <div style="padding:12px;border-radius:12px;border:1px solid rgba(63,100,127,.28);background:rgba(11,20,30,.48);" @key="priceGroup.Key">
+                                    <div style="color:#8fd8fb;font-size:12px;font-weight:700;">@priceGroup.Title</div>
+                                    <div style="margin-top:8px;color:#fff;font-size:12px;line-height:1.7;white-space:pre-line;word-break:break-word;">@priceGroup.Summary</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _query = "VK-00";
+    private bool _isSearching;
+    private bool _hasSearched;
+    private string _searchStatus = "就绪";
+    private string _searchSummary = "输入关键词后即可执行搜索。";
+    private readonly List<SearchGroupVm> _groups = [];
+    private OverlaySearchItem? _selectedItem;
+
+    private string _detailCategory = "详细信息";
+    private string _detailSourceType = "等待选择";
+    private string _detailTitle = "选择左侧结果";
+    private string _detailSubtitle = "先把搜索和基础详情恢复到稳定可用，再继续加更完整的价格和高级排版。";
+    private string _detailStatus = "当前显示的是基础版详情卡。";
+    private readonly List<DetailFieldVm> _overview = [];
+    private readonly List<DetailGroupVm> _detailGroups = [];
+    private string _priceStatus = "当前显示的是基础版价格卡。";
+    private readonly List<DetailFieldVm> _priceOverview = [];
+    private readonly List<PriceGroupVm> _priceGroups = [];
+    private int _selectionRequestVersion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (ApiService.HasConfiguration)
+        {
+            await SearchAsync();
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        if (_isSearching)
+        {
+            return;
+        }
+
+        _hasSearched = true;
+        var query = _query.Trim();
+
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            _searchStatus = "请输入关键词";
+            _searchSummary = "搜索词不能为空。";
+            _groups.Clear();
+            ResetDetail();
+            return;
+        }
+
+        _isSearching = true;
+        _searchStatus = $"正在搜索 {query}";
+        _searchSummary = "正在请求搜索接口...";
+        _groups.Clear();
+        ResetDetail();
+
+        try
+        {
+            var response = await ApiService.SearchAsync(query);
+            var grouped = response.Results
+                .GroupBy(item => string.IsNullOrWhiteSpace(item.CategoryLabel) ? "未分类" : item.CategoryLabel)
+                .OrderBy(group => group.Min(item => item.CategoryPriority))
+                .Select(group => new SearchGroupVm(group.Key, group.OrderByDescending(item => item.Score).ToList()))
+                .ToList();
+
+            _groups.AddRange(grouped);
+
+            if (response.Total > 0)
+            {
+                _searchStatus = "搜索完成";
+                _searchSummary = $"共命中 {response.Total} 条结果，分布在 {_groups.Count} 个分类。";
+
+                var firstItem = _groups.SelectMany(group => group.Items).FirstOrDefault();
+                if (firstItem is not null)
+                {
+                    await SelectItemAsync(firstItem);
+                }
+            }
+            else
+            {
+                _searchStatus = "没有结果";
+                _searchSummary = $"没有找到与 {query} 对应的结果。";
+            }
+        }
+        catch (Exception ex)
+        {
+            _searchStatus = "搜索失败";
+            _searchSummary = ex.Message;
+            ResetDetail();
+        }
+        finally
+        {
+            _isSearching = false;
+        }
+    }
+
+    private async Task SelectItemAsync(OverlaySearchItem item)
+    {
+        var requestVersion = ++_selectionRequestVersion;
+        _selectedItem = item;
+        _detailCategory = string.IsNullOrWhiteSpace(item.CategoryLabel) ? "未分类" : item.CategoryLabel;
+        _detailSourceType = GetSourceTypeLabel(item.SourceType);
+        _detailTitle = GetPrimaryName(item);
+        _detailSubtitle = BuildItemSubtitle(item);
+        _detailStatus = "正在加载基础详情...";
+        _priceStatus = "正在加载价格信息...";
+        _overview.Clear();
+        _detailGroups.Clear();
+        _priceOverview.Clear();
+        _priceGroups.Clear();
+
+        AddOverview("分类", _detailCategory);
+        AddOverview("来源", _detailSourceType);
+        AddOverview("ID", item.Id.ToString());
+        AddOverview("搜索分", item.Score.ToString());
+        AddOverview("标记", BuildFlagsText(item.Flags));
+        AddPriceOverview("价格来源", "正在请求价格接口...");
+
+        await Task.WhenAll(
+            LoadDetailAsync(item, requestVersion),
+            LoadPriceAsync(item, requestVersion));
+    }
+
+    private void ResetDetail()
+    {
+        _selectedItem = null;
+        _detailCategory = "详细信息";
+        _detailSourceType = "等待选择";
+        _detailTitle = "选择左侧结果";
+        _detailSubtitle = "先把搜索和基础详情恢复到稳定可用，再继续加更完整的价格和高级排版。";
+        _detailStatus = "当前显示的是基础版详情卡。";
+        _priceStatus = "当前显示的是基础版价格卡。";
+        _overview.Clear();
+        _detailGroups.Clear();
+        _priceOverview.Clear();
+        _priceGroups.Clear();
+    }
+
+    private string GetEmptyText()
+    {
+        if (!ApiService.HasConfiguration)
+        {
+            return "当前还没有读取到 API 配置，请先检查根目录 .env。";
+        }
+
+        return _hasSearched
+            ? "当前搜索没有返回结果，可以换一个关键词再试。"
+            : "输入关键词后，这里会显示按分类分组的候选结果。";
+    }
+
+    private string GetItemStyle(OverlaySearchItem item)
+    {
+        var selected = IsSelected(item);
+        return selected
+            ? "width:100%;margin:0 0 10px;padding:12px;border-radius:14px;border:1px solid rgba(52,176,230,.92);box-shadow:inset 3px 0 0 #2ca9e1;background:rgba(29,46,63,.92);color:inherit;text-align:left;box-sizing:border-box;cursor:pointer;"
+            : "width:100%;margin:0 0 10px;padding:12px;border-radius:14px;border:1px solid rgba(67,104,129,.48);background:rgba(18,30,42,.84);color:inherit;text-align:left;box-sizing:border-box;cursor:pointer;";
+    }
+
+    private bool IsSelected(OverlaySearchItem item)
+        => _selectedItem?.CategoryKey == item.CategoryKey && _selectedItem?.Id == item.Id;
+
+    private static string GetPrimaryName(OverlaySearchItem item)
+        => string.IsNullOrWhiteSpace(item.NameChs) ? item.Name : item.NameChs;
+
+    private static string BuildItemSubtitle(OverlaySearchItem item)
+    {
+        var lines = new List<string>();
+        if (!string.IsNullOrWhiteSpace(item.Name) &&
+            !string.Equals(item.Name, item.NameChs, StringComparison.OrdinalIgnoreCase))
+        {
+            lines.Add(item.Name);
+        }
+
+        var meta = new List<string>();
+        if (!string.IsNullOrWhiteSpace(item.Size)) meta.Add(item.Size);
+        if (!string.IsNullOrWhiteSpace(item.Type)) meta.Add(item.Type);
+        if (!string.IsNullOrWhiteSpace(item.Rank)) meta.Add(item.Rank);
+        if (meta.Count > 0) lines.Add(string.Join(" / ", meta));
+
+        return lines.Count > 0 ? string.Join(Environment.NewLine, lines) : "暂无额外副标题信息。";
+    }
+
+    private static string BuildDetailSubtitle(OverlayItemDetailResponse detail, OverlaySearchItem item)
+    {
+        var lines = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(detail.Name) &&
+            !string.Equals(detail.Name, detail.NameChs, StringComparison.OrdinalIgnoreCase))
+        {
+            lines.Add(detail.Name);
+        }
+        else
+        {
+            var fallback = BuildItemSubtitle(item);
+            if (!string.IsNullOrWhiteSpace(fallback))
+            {
+                lines.Add(fallback);
+            }
+        }
+
+        var manufacturer = BuildManufacturerText(detail);
+        if (!string.IsNullOrWhiteSpace(manufacturer) &&
+            !string.Equals(manufacturer, "暂无制造商信息", StringComparison.Ordinal))
+        {
+            lines.Add($"制造商：{manufacturer}");
+        }
+
+        return lines.Count > 0 ? string.Join(Environment.NewLine, lines) : "暂无额外详情信息。";
+    }
+
+    private static string BuildManufacturerText(OverlayItemDetailResponse detail)
+    {
+        var values = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(detail.ManufacturerNameChs))
+        {
+            values.Add(detail.ManufacturerNameChs);
+        }
+
+        if (!string.IsNullOrWhiteSpace(detail.ManufacturerName) &&
+            !values.Contains(detail.ManufacturerName, StringComparer.OrdinalIgnoreCase))
+        {
+            values.Add(detail.ManufacturerName);
+        }
+
+        return values.Count == 0 ? "暂无制造商信息" : string.Join(" / ", values);
+    }
+
+    private static string BuildFlagsText(OverlayItemFlags? flags)
+    {
+        if (flags is null)
+        {
+            return "无";
+        }
+
+        var tags = new List<string>();
+        AddFlag(tags, flags.ApiPrice, "API 价格");
+        AddFlag(tags, flags.ManualPrice, "手工价格");
+        AddFlag(tags, flags.Pledge, "商店物品");
+        AddFlag(tags, flags.Subscriber, "订阅物品");
+        AddFlag(tags, flags.Concierge, "礼宾");
+        AddFlag(tags, flags.Limited, "限时");
+        AddFlag(tags, flags.EventAward, "活动奖励");
+        AddFlag(tags, flags.Lucky, "稀有掉落");
+        AddFlag(tags, flags.Banu, "巴努兑换");
+
+        return tags.Count == 0 ? "无" : string.Join(" / ", tags);
+    }
+
+    private static string GetSourceTypeLabel(string? sourceType)
+        => sourceType?.Trim().ToLowerInvariant() switch
+        {
+            "ship" => "载具",
+            "commodity" => "商品",
+            "item" => "物品",
+            _ => "未知来源"
+        };
+
+    private static string FormatJsonValue(JsonElement value, string? unit)
+    {
+        var core = value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString() ?? string.Empty,
+            JsonValueKind.Number => value.ToString(),
+            JsonValueKind.True => "是",
+            JsonValueKind.False => "否",
+            JsonValueKind.Array => string.Join(" / ", value.EnumerateArray().Select(item => FormatJsonValue(item, null)).Where(text => !string.IsNullOrWhiteSpace(text))),
+            JsonValueKind.Object => value.ToString(),
+            _ => string.Empty
+        };
+
+        if (string.IsNullOrWhiteSpace(core))
+        {
+            return string.Empty;
+        }
+
+        return string.IsNullOrWhiteSpace(unit) ? core : $"{core} {unit}";
+    }
+
+    private async Task LoadDetailAsync(OverlaySearchItem item, int requestVersion)
+    {
+        try
+        {
+            var detail = await ApiService.GetDetailAsync(item.CategoryKey, item.Id);
+            if (!IsSelectionRequestCurrent(item, requestVersion))
+            {
+                return;
+            }
+
+            _detailTitle = string.IsNullOrWhiteSpace(detail.NameChs) ? detail.Name : detail.NameChs;
+            _detailSubtitle = BuildDetailSubtitle(detail, item);
+            _detailStatus = detail.Sections.Count > 0
+                ? $"已加载 {detail.Sections.Count} 个详情分组。"
+                : "详情接口返回成功，但当前没有可展示的分组。";
+
+            AddOverview("制造商", BuildManufacturerText(detail));
+            AddOverview("更新日期", detail.Extras.Update);
+
+            if (!string.IsNullOrWhiteSpace(detail.Extras.AccessAdvice))
+            {
+                AddOverview("获取提示", detail.Extras.AccessAdvice);
+            }
+
+            foreach (var section in detail.Sections)
+            {
+                var summary = string.Join(" / ", section.Items
+                    .Select(field => $"{field.Label}: {FormatJsonValue(field.Value, field.Unit)}")
+                    .Where(text => !string.IsNullOrWhiteSpace(text))
+                    .Take(4));
+
+                if (!string.IsNullOrWhiteSpace(summary))
+                {
+                    _detailGroups.Add(new DetailGroupVm(
+                        $"{item.CategoryKey}:{item.Id}:{section.Key}:{_detailGroups.Count}",
+                        string.IsNullOrWhiteSpace(section.Title) ? "未命名分组" : section.Title,
+                        summary));
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            if (IsSelectionRequestCurrent(item, requestVersion))
+            {
+                _detailStatus = $"详情加载失败：{ex.Message}";
+            }
+        }
+    }
+
+    private async Task LoadPriceAsync(OverlaySearchItem item, int requestVersion)
+    {
+        try
+        {
+            var price = await ApiService.GetPriceAsync(item.CategoryKey, item.Id);
+            if (!IsSelectionRequestCurrent(item, requestVersion))
+            {
+                return;
+            }
+
+            _priceOverview.Clear();
+            _priceGroups.Clear();
+
+            AddPriceOverview("买入报价", FormatCount(price.Summary.BuyCount));
+            AddPriceOverview("卖出报价", FormatCount(price.Summary.SellCount));
+            AddPriceOverview("租赁报价", FormatCount(price.Summary.RentCount));
+            AddPriceOverview("最低买价", FormatPrice(price.Summary.MinBuyPrice));
+            AddPriceOverview("最高买价", FormatPrice(price.Summary.MaxBuyPrice));
+            AddPriceOverview("最低卖价", FormatPrice(price.Summary.MinSellPrice));
+            AddPriceOverview("最高卖价", FormatPrice(price.Summary.MaxSellPrice));
+            AddPriceOverview("最低租价", FormatPrice(price.Summary.MinRentPrice));
+            AddPriceOverview("最高租价", FormatPrice(price.Summary.MaxRentPrice));
+            AddPriceOverview("更新时间", FormatUnixTimestamp(price.Extras.UpdatedAt));
+            AddPriceOverview("理赔时间", price.Extras.ClaimTime);
+            AddPriceOverview("加急时间", price.Extras.ExpediteTime);
+            AddPriceOverview("加急费用", FormatPrice(price.Extras.ExpediteFee));
+            AddPriceOverview("租赁地点", price.Extras.RentAt);
+
+            AddPriceGroup("buy", "买入地点", BuildPriceEntrySummary(price.Buy));
+            AddPriceGroup("sell", "卖出地点", BuildPriceEntrySummary(price.Sell));
+            AddPriceGroup("rent", "租赁地点", BuildPriceEntrySummary(price.Rent));
+
+            var activeBuckets = new[]
+            {
+                price.Summary.BuyCount > 0 ? $"买入 {price.Summary.BuyCount}" : null,
+                price.Summary.SellCount > 0 ? $"卖出 {price.Summary.SellCount}" : null,
+                price.Summary.RentCount > 0 ? $"租赁 {price.Summary.RentCount}" : null
+            }.Where(text => text is not null);
+
+            _priceStatus = _priceGroups.Count > 0 || _priceOverview.Count > 0
+                ? $"已加载价格摘要：{string.Join(" / ", activeBuckets.DefaultIfEmpty("当前没有可展示的价格记录"))}"
+                : "价格接口返回成功，但当前没有可展示的价格信息。";
+        }
+        catch (Exception ex)
+        {
+            if (IsSelectionRequestCurrent(item, requestVersion))
+            {
+                _priceOverview.Clear();
+                _priceGroups.Clear();
+                _priceStatus = $"价格加载失败：{ex.Message}";
+            }
+        }
+    }
+
+    private bool IsSelectionRequestCurrent(OverlaySearchItem item, int requestVersion)
+        => requestVersion == _selectionRequestVersion
+        && _selectedItem?.CategoryKey == item.CategoryKey
+        && _selectedItem?.Id == item.Id;
+
+    private void AddOverview(string label, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value) && _overview.All(field => field.Label != label))
+        {
+            _overview.Add(new DetailFieldVm(label, value));
+        }
+    }
+
+    private void AddPriceOverview(string label, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value) && _priceOverview.All(field => field.Label != label))
+        {
+            _priceOverview.Add(new DetailFieldVm(label, value));
+        }
+    }
+
+    private void AddPriceGroup(string key, string title, string? summary)
+    {
+        if (!string.IsNullOrWhiteSpace(summary))
+        {
+            _priceGroups.Add(new PriceGroupVm(
+                $"{_selectedItem?.CategoryKey}:{_selectedItem?.Id}:{key}:{_priceGroups.Count}",
+                title,
+                summary));
+        }
+    }
+
+    private static void AddFlag(ICollection<string> tags, bool enabled, string label)
+    {
+        if (enabled)
+        {
+            tags.Add(label);
+        }
+    }
+
+    private static string FormatCount(int count) => count <= 0 ? "无" : $"{count} 条";
+
+    private static string FormatPrice(int? price)
+        => price is null ? string.Empty : $"{price.Value:N0} aUEC";
+
+    private static string FormatUnixTimestamp(long? updatedAt)
+    {
+        if (updatedAt is null or <= 0)
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            return DateTimeOffset.FromUnixTimeSeconds(updatedAt.Value).ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+        }
+        catch
+        {
+            return updatedAt.Value.ToString();
+        }
+    }
+
+    private static string BuildPriceEntrySummary(IEnumerable<OverlayPriceEntry> entries)
+    {
+        var lines = entries
+            .Take(3)
+            .Select(BuildPriceEntryLine)
+            .Where(text => !string.IsNullOrWhiteSpace(text))
+            .ToList();
+
+        return lines.Count == 0 ? string.Empty : string.Join(Environment.NewLine, lines);
+    }
+
+    private static string BuildPriceEntryLine(OverlayPriceEntry entry)
+    {
+        var primary = FirstNonEmpty(entry.Location, entry.TerminalName, "未知地点");
+        var fragments = new List<string> { primary };
+
+        var price = FormatPrice(entry.Price);
+        if (!string.IsNullOrWhiteSpace(price))
+        {
+            fragments.Add(price);
+        }
+
+        if (!string.IsNullOrWhiteSpace(entry.TerminalName) &&
+            !string.Equals(entry.TerminalName, primary, StringComparison.OrdinalIgnoreCase))
+        {
+            fragments.Add(entry.TerminalName);
+        }
+
+        if (entry.DurationDays is > 0)
+        {
+            fragments.Add($"{entry.DurationDays} 天");
+        }
+
+        if (!string.IsNullOrWhiteSpace(entry.GameVersion))
+        {
+            fragments.Add(entry.GameVersion);
+        }
+
+        return string.Join(" · ", fragments);
+    }
+
+    private static string FirstNonEmpty(params string?[] values)
+        => values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? string.Empty;
+
+    private sealed record SearchGroupVm(string CategoryLabel, List<OverlaySearchItem> Items);
+    private sealed record DetailFieldVm(string Label, string Value);
+    private sealed record DetailGroupVm(string Key, string Title, string Summary);
+    private sealed record PriceGroupVm(string Key, string Title, string Summary);
+}

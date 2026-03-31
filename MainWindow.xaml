@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:StarCitizenOverLay"
         xmlns:data="clr-namespace:System.Windows.Data;assembly=PresentationFramework"
+        xmlns:blazor="http://schemas.microsoft.com/winfx/2006/xaml/presentation/blazor"
         mc:Ignorable="d"
         Title="星际公民 Overlay"
         Icon="Assets/AppIcon.ico"
@@ -13,9 +14,15 @@
         WindowStyle="None"
         ResizeMode="NoResize"
         AllowsTransparency="True"
-        Background="Transparent"
+        Focusable="True"
+        FocusManager.FocusedElement="{Binding ElementName=SearchBlazorWebView}"
         Topmost="True"
         WindowStartupLocation="Manual">
+    <Window.Background>
+        <!-- If the opacity is fully transparent, WPF may treat the window like click-through over WebView content. -->
+        <SolidColorBrush Color="#010000"
+                         Opacity="0.05" />
+    </Window.Background>
     <Window.Resources>
         <Style x:Key="OverlayScrollBarStyle"
                TargetType="ScrollBar">
@@ -71,7 +78,8 @@
         </CollectionViewSource>
     </Window.Resources>
     <Grid Background="Transparent">
-        <Border Margin="0"
+        <Border x:Name="OverlayContentHost"
+                Margin="0"
                 Padding="0"
                 Background="Transparent"
                 BorderBrush="Transparent"
@@ -122,11 +130,11 @@
                             <TextBlock Margin="0,10,0,0"
                                        Foreground="#FF8ED0F7"
                                        FontSize="12"
-                                       Text="交互切换：Alt + Shift + S" />
+                                       Text="交互切换：小键盘 1" />
                             <TextBlock Margin="0,6,0,0"
                                        Foreground="#FF8ED0F7"
                                        FontSize="12"
-                                       Text="显示隐藏：Alt + Shift + O" />
+                                       Text="显示隐藏：小键盘 0" />
                         </StackPanel>
                     </Border>
 
@@ -230,9 +238,30 @@
                     </Border>
                 </StackPanel>
 
+                <Border Width="760"
+                        Height="704"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Top"
+                        Background="#CC09131C"
+                        BorderBrush="#FF2CA9E1"
+                        BorderThickness="1"
+                        CornerRadius="14">
+                    <blazor:BlazorWebView x:Name="SearchBlazorWebView"
+                                          HostPage="wwwroot\index.html"
+                                          Focusable="True"
+                                          Loaded="SearchBlazorWebView_Loaded"
+                                          Services="{DynamicResource services}">
+                        <blazor:BlazorWebView.RootComponents>
+                            <blazor:RootComponent Selector="#app"
+                                                  ComponentType="{x:Type local:OverlaySearchApp}" />
+                        </blazor:BlazorWebView.RootComponents>
+                    </blazor:BlazorWebView>
+                </Border>
+
                 <Grid Width="760"
                       HorizontalAlignment="Center"
-                      VerticalAlignment="Top">
+                      VerticalAlignment="Top"
+                      Visibility="Collapsed">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />

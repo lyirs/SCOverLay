@@ -1,17 +1,25 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.17763.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <InformationalVersion>0.1.0</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include=".env" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="10.0.10" />
+    <None Include=".env"
+          Condition="Exists('.env')"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
     <None Include=".env.template" />
   </ItemGroup>
 
@@ -19,9 +27,5 @@
     <None Remove="Assets\AppIcon.ico" />
     <Resource Include="Assets\AppIcon.ico" />
   </ItemGroup>
-
-  <Target Name="CopyLocalEnvFile" AfterTargets="Build" Condition="Exists('.env')">
-    <Copy SourceFiles=".env" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-  </Target>
 
 </Project>

@@ -28,11 +28,6 @@ namespace StarCitizenOverLay
     public partial class MainWindow : Window
     {
         private const double OverlayMargin = 24;
-        private const int InteractionHotKeyId = 9000;
-        private const int VisibilityHotKeyId = 9001;
-        private const uint ModAlt = 0x0001;
-        private const uint ModShift = 0x0004;
-        private const int WmHotKey = 0x0312;
         private const int GwlExStyle = -20;
         private const int WsExTransparent = 0x00000020;
         private const uint SwpNoSize = 0x0001;
@@ -44,15 +39,14 @@ namespace StarCitizenOverLay
         private static readonly string[] GameProcessNames = ["StarCitizen", "StarCitizen_Launcher"];
 
         private System.IntPtr _windowHandle;
-        private System.Windows.Interop.HwndSource? _hwndSource;
         private readonly System.Windows.Threading.DispatcherTimer _monitorSyncTimer;
+        private readonly GlobalKeyboardShortcutListener _globalKeyboardShortcutListener;
         private readonly Forms.NotifyIcon _notifyIcon;
         private readonly Forms.ToolStripMenuItem _toggleOverlayMenuItem;
         private bool _isInteractive = true;
+        private bool _interactionModeBeforeHide = true;
         private bool _isOverlayVisible = true;
         private bool _isExiting;
-        private bool _interactionHotKeyRegistered;
-        private bool _visibilityHotKeyRegistered;
         private const int MaxDisplayedResults = 8;
         private static readonly HttpClient SearchHttpClient = new();
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -77,6 +71,9 @@ namespace StarCitizenOverLay
                 Interval = TimeSpan.FromSeconds(2)
             };
             _monitorSyncTimer.Tick += MonitorSyncTimer_Tick;
+            _globalKeyboardShortcutListener = new GlobalKeyboardShortcutListener();
+            _globalKeyboardShortcutListener.InteractionHotKeyPressed += GlobalKeyboardShortcutListener_InteractionHotKeyPressed;
+            _globalKeyboardShortcutListener.VisibilityHotKeyPressed += GlobalKeyboardShortcutListener_VisibilityHotKeyPressed;
             _toggleOverlayMenuItem = new Forms.ToolStripMenuItem("隐藏 Overlay");
             _toggleOverlayMenuItem.Click += ToggleOverlayMenuItem_Click;
 
@@ -107,7 +104,7 @@ namespace StarCitizenOverLay
             UpdateOverlayTargetBounds();
             _monitorSyncTimer.Start();
 
-            _apiBaseUrl = LoadApiBaseUrl();
+            _apiBaseUrl = OverlayApiConfiguration.LoadApiBaseUrl();
 
             UpdateInteractionStatus();
             InitializeSearchUi();
@@ -118,40 +115,16 @@ namespace StarCitizenOverLay
         private void MainWindow_SourceInitialized(object? sender, System.EventArgs e)
         {
             _windowHandle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-            _hwndSource = System.Windows.Interop.HwndSource.FromHwnd(_windowHandle);
-            _hwndSource?.AddHook(WndProc);
-
-            _interactionHotKeyRegistered = RegisterHotKey(
-                _windowHandle,
-                InteractionHotKeyId,
-                ModAlt | ModShift,
-                (uint)KeyInterop.VirtualKeyFromKey(Key.S));
-            _visibilityHotKeyRegistered = RegisterHotKey(
-                _windowHandle,
-                VisibilityHotKeyId,
-                ModAlt | ModShift,
-                (uint)KeyInterop.VirtualKeyFromKey(Key.O));
-
+            _globalKeyboardShortcutListener.Start();
             ApplyInteractionMode();
         }
 
         private void MainWindow_Closed(object? sender, System.EventArgs e)
         {
             _monitorSyncTimer.Stop();
+            _globalKeyboardShortcutListener.Dispose();
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
-
-            if (_interactionHotKeyRegistered)
-            {
-                UnregisterHotKey(_windowHandle, InteractionHotKeyId);
-            }
-
-            if (_visibilityHotKeyRegistered)
-            {
-                UnregisterHotKey(_windowHandle, VisibilityHotKeyId);
-            }
-
-            _hwndSource?.RemoveHook(WndProc);
         }
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -178,6 +151,36 @@ namespace StarCitizenOverLay
         private void NotifyIcon_DoubleClick(object? sender, EventArgs e)
         {
             ToggleOverlayVisibility();
+        }
+
+        private void SearchBlazorWebView_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is Microsoft.AspNetCore.Components.WebView.Wpf.BlazorWebView blazorWebView)
+            {
+                blazorWebView.WebView.DefaultBackgroundColor = System.Drawing.Color.Transparent;
+                blazorWebView.Focus();
+                blazorWebView.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        blazorWebView.WebView.Focus();
+                    }
+                    catch
+                    {
+                        // WebView focus can race CoreWebView initialization during startup.
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Background);
+            }
+        }
+
+        private void GlobalKeyboardShortcutListener_InteractionHotKeyPressed(object? sender, EventArgs e)
+        {
+            Dispatcher.Invoke(ToggleInteractionMode);
+        }
+
+        private void GlobalKeyboardShortcutListener_VisibilityHotKeyPressed(object? sender, EventArgs e)
+        {
+            Dispatcher.Invoke(ToggleOverlayVisibility);
         }
 
         private void ToggleOverlayMenuItem_Click(object? sender, EventArgs e)
@@ -246,20 +249,65 @@ namespace StarCitizenOverLay
 
         private void HideOverlayToTray()
         {
-            Hide();
+            _interactionModeBeforeHide = _isInteractive;
+            _isInteractive = false;
+            OverlayContentHost.Visibility = Visibility.Collapsed;
             _isOverlayVisible = false;
+            ApplyInteractionMode();
+            ReturnFocusToGameWindow();
             UpdateTrayMenuText();
         }
 
         private void RestoreOverlayFromTray()
         {
             UpdateOverlayTargetBounds();
-            Show();
-            Activate();
-            Topmost = true;
+            OverlayContentHost.Visibility = Visibility.Visible;
             _isOverlayVisible = true;
+            _isInteractive = _interactionModeBeforeHide;
+            ForceOverlayToFront();
             ApplyInteractionMode();
             UpdateTrayMenuText();
+        }
+
+        private void ForceOverlayToFront()
+        {
+            var foregroundWindow = GetForegroundWindow();
+            var foregroundThreadId = foregroundWindow == IntPtr.Zero
+                ? 0u
+                : GetWindowThreadProcessId(foregroundWindow, out _);
+            var currentThreadId = GetCurrentThreadId();
+            var attachedToForeground = foregroundThreadId != 0 && foregroundThreadId != currentThreadId;
+
+            if (attachedToForeground)
+            {
+                AttachThreadInput(foregroundThreadId, currentThreadId, true);
+            }
+
+            try
+            {
+                Topmost = false;
+                Topmost = true;
+                BringWindowToTop(_windowHandle);
+                SetForegroundWindow(_windowHandle);
+                Activate();
+                Focus();
+            }
+            finally
+            {
+                if (attachedToForeground)
+                {
+                    AttachThreadInput(foregroundThreadId, currentThreadId, false);
+                }
+            }
+        }
+
+        private void ReturnFocusToGameWindow()
+        {
+            var gameWindowHandle = FindGameWindowHandle();
+            if (gameWindowHandle != IntPtr.Zero)
+            {
+                SetForegroundWindow(gameWindowHandle);
+            }
         }
 
         private void UpdateTrayMenuText()
@@ -432,16 +480,12 @@ namespace StarCitizenOverLay
             if (_isInteractive)
             {
                 InteractionModeText.Text = "可交互";
-                InteractionDescriptionText.Text = _interactionHotKeyRegistered
-                    ? "当前是全屏透明宿主层。可交互模式下可以点击面板内容。"
-                    : "窗口当前可接收鼠标输入，但交互切换热键注册失败。";
+                InteractionDescriptionText.Text = "当前是全屏透明宿主层。可交互模式下可以点击面板内容。";
             }
             else
             {
                 InteractionModeText.Text = "鼠标穿透";
-                InteractionDescriptionText.Text = _interactionHotKeyRegistered
-                    ? "鼠标点击会直接穿过悬浮层。按 Alt + Shift + S 可以恢复交互。"
-                    : "鼠标点击会直接穿过悬浮层，但交互切换热键注册失败。";
+                InteractionDescriptionText.Text = "鼠标点击会直接穿过悬浮层。按小键盘 1 可以恢复交互。";
             }
         }
 
@@ -1064,38 +1108,6 @@ namespace StarCitizenOverLay
             return $"{apiBaseUrl.TrimEnd('/')}/api/items/search?q={Uri.EscapeDataString(query)}";
         }
 
-        private System.IntPtr WndProc(
-            System.IntPtr hwnd,
-            int msg,
-            System.IntPtr wParam,
-            System.IntPtr lParam,
-            ref bool handled)
-        {
-            if (msg != WmHotKey)
-            {
-                return System.IntPtr.Zero;
-            }
-
-            if (wParam.ToInt32() == InteractionHotKeyId)
-            {
-                ToggleInteractionMode();
-                handled = true;
-            }
-            else if (wParam.ToInt32() == VisibilityHotKeyId)
-            {
-                ToggleOverlayVisibility();
-                handled = true;
-            }
-
-            return System.IntPtr.Zero;
-        }
-
-        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
-        private static extern bool RegisterHotKey(System.IntPtr hWnd, int id, uint fsModifiers, uint vk);
-
-        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
-        private static extern bool UnregisterHotKey(System.IntPtr hWnd, int id);
-
         [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
         private static extern System.IntPtr GetWindowLongPtr(System.IntPtr hWnd, int nIndex);
 
@@ -1130,6 +1142,21 @@ namespace StarCitizenOverLay
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         private static extern uint GetWindowThreadProcessId(System.IntPtr hWnd, out uint lpdwProcessId);
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+        private static extern uint GetCurrentThreadId();
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern System.IntPtr GetForegroundWindow();
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+        private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+        private static extern bool BringWindowToTop(System.IntPtr hWnd);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetForegroundWindow(System.IntPtr hWnd);
 
         [System.Runtime.InteropServices.DllImport("shcore.dll")]
         private static extern int GetDpiForMonitor(System.IntPtr hmonitor, MonitorDpiType dpiType, out uint dpiX, out uint dpiY);

@@ -1,0 +1,30 @@
+@namespace StarCitizenOverLay
+@inject OverlaySearchApiService ApiService
+
+<div style="height:100%;padding:24px;box-sizing:border-box;color:#f7fbff;font-family:'Segoe UI','Microsoft YaHei UI',sans-serif;">
+    <div style="height:100%;border:1px solid rgba(52,176,230,.72);border-radius:16px;background:linear-gradient(180deg,rgba(17,31,45,.92),rgba(8,17,26,.86));padding:22px;box-sizing:border-box;">
+        <div style="color:#8fd8fb;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Blazor Smoke Test</div>
+        <div style="margin-top:8px;font-size:28px;font-weight:700;line-height:1.1;">Blazor 面板已接管</div>
+        <div style="margin-top:10px;color:#dbeaf6;font-size:14px;line-height:1.7;">
+            这是一版最小静态面板，用来确认当前 `BlazorWebView` 宿主本身已经能够正常渲染。
+        </div>
+
+        <div style="margin-top:20px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+            <div style="padding:14px;border-radius:14px;background:rgba(23,37,52,.72);border:1px solid rgba(62,96,121,.22);">
+                <div style="color:#8fd8fb;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;">宿主状态</div>
+                <div style="margin-top:8px;font-size:18px;font-weight:700;">正常渲染</div>
+                <div style="margin-top:6px;color:#dcebf7;font-size:13px;line-height:1.6;">如果你能看到这张卡片，说明问题不在 `BlazorWebView` 宿主层。</div>
+            </div>
+
+            <div style="padding:14px;border-radius:14px;background:rgba(23,37,52,.72);border:1px solid rgba(62,96,121,.22);">
+                <div style="color:#8fd8fb;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;">API 配置</div>
+                <div style="margin-top:8px;font-size:18px;font-weight:700;">@(ApiService.HasConfiguration ? "已检测到 API_BASE_URL" : "缺少 API_BASE_URL")</div>
+                <div style="margin-top:6px;color:#dcebf7;font-size:13px;line-height:1.6;">下一步我们会在这个基础上把搜索和详情面板分块恢复回来。</div>
+            </div>
+        </div>
+
+        <div style="margin-top:20px;padding:14px;border-radius:14px;background:rgba(12,22,31,.56);border:1px dashed rgba(92,135,163,.42);color:#dcebf7;font-size:13px;line-height:1.7;">
+            当前目标不是保留这个界面，而是先确认最小 Blazor 组件可用，然后再逐块恢复真正的搜索 UI。
+        </div>
+    </div>
+</div>
