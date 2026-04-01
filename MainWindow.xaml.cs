@@ -99,6 +99,7 @@ namespace StarCitizenOverLay
             };
             _notifyIcon.DoubleClick += NotifyIcon_DoubleClick;
             _shellState.SetCombatLogRefreshHandler(RefreshCombatLogAsync);
+            _shellState.SetExitHandler(RequestExitFromShellAsync);
             SourceInitialized += MainWindow_SourceInitialized;
             Loaded += MainWindow_Loaded;
             Closing += MainWindow_Closing;
@@ -132,6 +133,7 @@ namespace StarCitizenOverLay
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
             _shellState.SetCombatLogRefreshHandler(null);
+            _shellState.SetExitHandler(null);
         }
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -141,8 +143,8 @@ namespace StarCitizenOverLay
                 return;
             }
 
-            e.Cancel = true;
-            HideOverlayToTray();
+            _isExiting = true;
+            _notifyIcon.Visible = false;
         }
 
         private void MonitorSyncTimer_Tick(object? sender, EventArgs e)
@@ -197,6 +199,21 @@ namespace StarCitizenOverLay
 
         private void ExitMenuItem_Click(object? sender, EventArgs e)
         {
+            RequestExitApplication();
+        }
+
+        private Task RequestExitFromShellAsync()
+        {
+            return Dispatcher.InvokeAsync(RequestExitApplication).Task;
+        }
+
+        private void RequestExitApplication()
+        {
+            if (_isExiting)
+            {
+                return;
+            }
+
             _isExiting = true;
             _notifyIcon.Visible = false;
             Close();

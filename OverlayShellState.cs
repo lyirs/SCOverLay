@@ -8,6 +8,7 @@ namespace StarCitizenOverLay
     internal sealed class OverlayShellState
     {
         private Func<Task>? _combatLogRefreshHandler;
+        private Func<Task>? _exitHandler;
         private List<OverlayShellLogEntry> _combatLogEntries = [];
 
         public event Action? Changed;
@@ -16,17 +17,21 @@ namespace StarCitizenOverLay
 
         public string InteractionModeTitle { get; private set; } = "可交互";
 
-        public string InteractionDescription { get; private set; } = "当前是全屏透明宿主层。可交互模式下可以点击面板内容。";
+        public string InteractionDescription { get; private set; } =
+            "当前是全屏透明宿主层。可交互模式下可以点击面板内容。";
 
         public string InteractionToggleHint => "交互切换：小键盘 1";
 
         public string VisibilityToggleHint => "显示隐藏：小键盘 0";
 
+        public string ExitHint => "退出程序：Alt+F4 或侧边栏按钮";
+
         public bool IsCombatLogRefreshing { get; private set; }
 
         public string CombatLogStatus { get; private set; } = "等待读取日志。";
 
-        public string CombatLogSummary { get; private set; } = "将自动定位 Star Citizen 安装目录并解析最近战斗、上下线和异常事件。";
+        public string CombatLogSummary { get; private set; } =
+            "将自动定位 Star Citizen 安装目录并解析最近战斗、上下线和异常事件。";
 
         public IReadOnlyList<OverlayShellLogEntry> CombatLogEntries => _combatLogEntries;
 
@@ -38,6 +43,16 @@ namespace StarCitizenOverLay
         public Task RequestCombatLogRefreshAsync()
         {
             return _combatLogRefreshHandler?.Invoke() ?? Task.CompletedTask;
+        }
+
+        public void SetExitHandler(Func<Task>? handler)
+        {
+            _exitHandler = handler;
+        }
+
+        public Task RequestExitAsync()
+        {
+            return _exitHandler?.Invoke() ?? Task.CompletedTask;
         }
 
         public void SetInteractionState(bool isInteractive, string title, string description)

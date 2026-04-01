@@ -86,6 +86,29 @@
         line-height: 1.45;
     }
 
+    .shell-card-actions {
+        margin-top: 12px;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .shell-exit-button {
+        min-width: 96px;
+        height: 28px;
+        padding: 0 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 114, 114, .78);
+        background: linear-gradient(180deg, rgba(136, 38, 38, .96), rgba(96, 22, 22, .96));
+        color: #fff2f2;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .shell-exit-button:hover {
+        filter: brightness(1.07);
+    }
+
     .shell-mode-label,
     .shell-log-label {
         color: #8ed0f7;
@@ -1102,6 +1125,13 @@
                 <section class="shell-card">
                     <div class="shell-title">星际公民 Overlay</div>
                     <div class="shell-subtitle">全屏透明宿主层原型</div>
+                    <div class="shell-card-actions">
+                        <button type="button"
+                                class="shell-exit-button"
+                                @onclick="ExitOverlayAsync">
+                            退出程序
+                        </button>
+                    </div>
                 </section>
 
                 <section class="shell-card">
@@ -1110,6 +1140,7 @@
                     <div class="shell-mode-description">@ShellState.InteractionDescription</div>
                     <div class="shell-mode-hint">@ShellState.InteractionToggleHint</div>
                     <div class="shell-mode-hint" style="margin-top:6px;">@ShellState.VisibilityToggleHint</div>
+                    <div class="shell-mode-hint" style="margin-top:6px;">@ShellState.ExitHint</div>
                 </section>
             </div>
 

@@ -115,6 +115,11 @@ namespace StarCitizenOverLay
             return ShellState.RequestCombatLogRefreshAsync();
         }
 
+        private Task ExitOverlayAsync()
+        {
+            return ShellState.RequestExitAsync();
+        }
+
         private async Task SearchAsync()
         {
             if (_isSearching)
