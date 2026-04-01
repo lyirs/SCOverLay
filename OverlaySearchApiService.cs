@@ -25,7 +25,7 @@ namespace StarCitizenOverLay
             using var response = await HttpClient.GetAsync(requestUrl);
             if (!response.IsSuccessStatusCode)
             {
-                throw new InvalidOperationException($"搜索请求失败：{(int)response.StatusCode} {response.ReasonPhrase}");
+                throw new InvalidOperationException($"搜索接口返回错误：{(int)response.StatusCode} {response.ReasonPhrase}");
             }
 
             await using var responseStream = await response.Content.ReadAsStreamAsync();
@@ -41,7 +41,7 @@ namespace StarCitizenOverLay
             using var response = await HttpClient.GetAsync(requestUrl);
             if (!response.IsSuccessStatusCode)
             {
-                throw new InvalidOperationException($"详情请求失败：{(int)response.StatusCode} {response.ReasonPhrase}");
+                throw new InvalidOperationException($"详情接口返回错误：{(int)response.StatusCode} {response.ReasonPhrase}");
             }
 
             await using var responseStream = await response.Content.ReadAsStreamAsync();
@@ -57,7 +57,7 @@ namespace StarCitizenOverLay
             using var response = await HttpClient.GetAsync(requestUrl);
             if (!response.IsSuccessStatusCode)
             {
-                throw new InvalidOperationException($"价格请求失败：{(int)response.StatusCode} {response.ReasonPhrase}");
+                throw new InvalidOperationException($"价格接口返回错误：{(int)response.StatusCode} {response.ReasonPhrase}");
             }
 
             await using var responseStream = await response.Content.ReadAsStreamAsync();
@@ -65,11 +65,27 @@ namespace StarCitizenOverLay
                    ?? new OverlayItemPriceResponse();
         }
 
+        public async Task<OverlayMissionDetailResponse> GetMissionDetailAsync(string id)
+        {
+            var apiBaseUrl = EnsureApiBaseUrl();
+            var requestUrl = $"{apiBaseUrl.TrimEnd('/')}/api/missions/detail?id={Uri.EscapeDataString(id)}";
+
+            using var response = await HttpClient.GetAsync(requestUrl);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"任务详情接口返回错误：{(int)response.StatusCode} {response.ReasonPhrase}");
+            }
+
+            await using var responseStream = await response.Content.ReadAsStreamAsync();
+            return await JsonSerializer.DeserializeAsync<OverlayMissionDetailResponse>(responseStream, JsonOptions)
+                   ?? new OverlayMissionDetailResponse();
+        }
+
         private string EnsureApiBaseUrl()
         {
             if (string.IsNullOrWhiteSpace(ApiBaseUrl))
             {
-                throw new InvalidOperationException("缺少 .env 中的 API_BASE_URL。");
+                throw new InvalidOperationException("未检测到 API_BASE_URL，请检查 .env 配置。");
             }
 
             return ApiBaseUrl;

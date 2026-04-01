@@ -36,6 +36,8 @@ namespace StarCitizenOverLay
         private const uint SwpFrameChanged = 0x0020;
         private const uint MonitorDefaultToNearest = 2;
         private const int GwOwner = 4;
+        private const double SearchTerminalMinHeight = 680;
+        private const double SearchTerminalBottomPadding = 12;
         private static readonly string[] GameProcessNames = ["StarCitizen", "StarCitizen_Launcher"];
 
         private System.IntPtr _windowHandle;
@@ -337,18 +339,34 @@ namespace StarCitizenOverLay
                 ? gameMonitorBounds
                 : GetPrimaryWorkAreaBounds();
 
-            if (Math.Abs(Left - targetBounds.Left) < 0.1 &&
+            var boundsUnchanged = Math.Abs(Left - targetBounds.Left) < 0.1 &&
                 Math.Abs(Top - targetBounds.Top) < 0.1 &&
                 Math.Abs(Width - targetBounds.Width) < 0.1 &&
-                Math.Abs(Height - targetBounds.Height) < 0.1)
+                Math.Abs(Height - targetBounds.Height) < 0.1;
+
+            if (!boundsUnchanged)
+            {
+                Left = targetBounds.Left;
+                Top = targetBounds.Top;
+                Width = targetBounds.Width;
+                Height = targetBounds.Height;
+            }
+
+            UpdateSearchTerminalHostSize(targetBounds);
+        }
+
+        private void UpdateSearchTerminalHostSize(OverlayBounds targetBounds)
+        {
+            if (SearchTerminalHost is null)
             {
                 return;
             }
 
-            Left = targetBounds.Left;
-            Top = targetBounds.Top;
-            Width = targetBounds.Width;
-            Height = targetBounds.Height;
+            var maxAvailableHeight = Math.Max(
+                SearchTerminalMinHeight,
+                targetBounds.Height - (OverlayMargin * 2) - SearchTerminalBottomPadding);
+
+            SearchTerminalHost.Height = maxAvailableHeight;
         }
 
         private static OverlayBounds GetPrimaryWorkAreaBounds()

@@ -87,72 +87,77 @@
                 CornerRadius="0">
             <Grid Margin="24">
 
-                <StackPanel Width="360"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Top">
-                    <Border Padding="18"
-                            Background="#CC09131C"
-                            BorderBrush="#FF2CA9E1"
+                <Grid Width="360"
+                      HorizontalAlignment="Left">
+                    <StackPanel HorizontalAlignment="Left"
+                                VerticalAlignment="Top">
+                        <Border Padding="18"
+                                Background="#CC09131C"
+                                BorderBrush="#FF2CA9E1"
+                                BorderThickness="1"
+                                CornerRadius="14">
+                            <StackPanel>
+                                <TextBlock FontSize="22"
+                                           FontWeight="SemiBold"
+                                           Foreground="White"
+                                           Text="星际公民 Overlay" />
+                                <TextBlock Margin="0,8,0,0"
+                                           Foreground="#FFD9E7F3"
+                                           FontSize="14"
+                                           Text="全屏透明宿主层原型" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Margin="0,14,0,0"
+                                Padding="12"
+                                Background="#66314B63"
+                                CornerRadius="10">
+                            <StackPanel>
+                                <TextBlock Foreground="#FF8ED0F7"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Text="模式" />
+                                <TextBlock x:Name="InteractionModeText"
+                                           Margin="0,6,0,0"
+                                           Foreground="White"
+                                           FontSize="16"
+                                           FontWeight="SemiBold"
+                                           Text="可交互" />
+                                <TextBlock x:Name="InteractionDescriptionText"
+                                           Margin="0,6,0,0"
+                                           Foreground="White"
+                                           TextWrapping="Wrap"
+                                           Text="当前是全屏透明宿主层。可交互模式下可以点击面板内容。" />
+                                <TextBlock Margin="0,10,0,0"
+                                           Foreground="#FF8ED0F7"
+                                           FontSize="12"
+                                           Text="交互切换：小键盘 1" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="#FF8ED0F7"
+                                           FontSize="12"
+                                           Text="显示隐藏：小键盘 0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <Border Margin="0,0,0,18"
+                            Padding="12"
+                            Background="#B20A141E"
+                            BorderBrush="#553D617B"
                             BorderThickness="1"
-                            CornerRadius="14">
-                        <StackPanel>
-                            <TextBlock FontSize="22"
-                                       FontWeight="SemiBold"
-                                       Foreground="White"
-                                       Text="星际公民 Overlay" />
-                            <TextBlock Margin="0,8,0,0"
-                                       Foreground="#FFD9E7F3"
-                                       FontSize="14"
-                                       Text="全屏透明宿主层原型" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border Margin="0,14,0,0"
-                            Padding="12"
-                            Background="#66314B63"
-                            CornerRadius="10">
-                        <StackPanel>
-                            <TextBlock Foreground="#FF8ED0F7"
-                                       FontSize="12"
-                                       FontWeight="Bold"
-                                       Text="模式" />
-                            <TextBlock x:Name="InteractionModeText"
-                                       Margin="0,6,0,0"
-                                       Foreground="White"
-                                       FontSize="16"
-                                       FontWeight="SemiBold"
-                                       Text="可交互" />
-                            <TextBlock x:Name="InteractionDescriptionText"
-                                       Margin="0,6,0,0"
-                                       Foreground="White"
-                                       TextWrapping="Wrap"
-                                       Text="当前是全屏透明宿主层。可交互模式下可以点击面板内容。" />
-                            <TextBlock Margin="0,10,0,0"
-                                       Foreground="#FF8ED0F7"
-                                       FontSize="12"
-                                       Text="交互切换：小键盘 1" />
-                            <TextBlock Margin="0,6,0,0"
-                                       Foreground="#FF8ED0F7"
-                                       FontSize="12"
-                                       Text="显示隐藏：小键盘 0" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border Margin="0,14,0,0"
-                            Padding="12"
-                            Background="#4D16222F"
-                            CornerRadius="10">
+                            CornerRadius="12"
+                            VerticalAlignment="Bottom">
                         <StackPanel>
                             <DockPanel LastChildFill="False">
                                 <TextBlock Foreground="#FF8ED0F7"
                                            FontSize="12"
                                            FontWeight="Bold"
-                                           Text="事件流" />
+                                           Text="事件频道" />
                                 <Button x:Name="CombatLogRefreshButton"
                                         DockPanel.Dock="Right"
-                                        Width="82"
-                                        Height="28"
-                                        Padding="8,3"
+                                        Width="72"
+                                        Height="24"
+                                        Padding="6,2"
                                         Background="#FF1776A8"
                                         BorderBrush="#FF2CA9E1"
                                         Click="CombatLogRefreshButton_Click"
@@ -160,17 +165,18 @@
                                         Foreground="White" />
                             </DockPanel>
                             <TextBlock x:Name="CombatLogStatusText"
-                                       Margin="0,8,0,0"
+                                       Margin="0,6,0,0"
                                        Foreground="#FFD9E7F3"
+                                       FontSize="12"
                                        Text="等待读取日志。" />
                             <TextBlock x:Name="CombatLogSummaryText"
-                                       Margin="0,4,0,0"
+                                       Margin="0,3,0,0"
                                        Foreground="#FF8ED0F7"
-                                       FontSize="12"
+                                       FontSize="11"
                                        TextWrapping="Wrap"
                                        Text="将自动定位 Star Citizen 安装目录并解析最近战斗、上下线和异常事件。" />
                             <ScrollViewer Margin="0,8,0,0"
-                                          Height="336"
+                                          Height="244"
                                           VerticalScrollBarVisibility="Auto">
                                 <ScrollViewer.Resources>
                                     <Style TargetType="ScrollBar"
@@ -179,55 +185,51 @@
                                 <ItemsControl ItemsSource="{Binding CombatLogEntries}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Margin="0,0,0,8"
-                                                    Padding="0"
-                                                    Background="#40131D29"
-                                                    BorderBrush="#553D617B"
+                                            <Border Margin="0,0,0,6"
+                                                    Padding="8,7"
+                                                    Background="#66131D29"
+                                                    BorderBrush="#443D617B"
                                                     BorderThickness="1"
-                                                    CornerRadius="9">
+                                                    CornerRadius="8">
                                                 <Grid>
-                                                    <Border Width="4"
-                                                            HorizontalAlignment="Left"
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0"
+                                                            Margin="0,0,8,0"
+                                                            Padding="6,2"
                                                             Background="{Binding BadgeBackground}"
-                                                            CornerRadius="9,0,0,9" />
-                                                    <Grid Margin="12,10,12,10">
-                                                        <Grid.RowDefinitions>
-                                                            <RowDefinition Height="Auto" />
-                                                            <RowDefinition Height="Auto" />
-                                                            <RowDefinition Height="Auto" />
-                                                        </Grid.RowDefinitions>
-                                                        <DockPanel Grid.Row="0"
-                                                                   LastChildFill="False">
-                                                            <Border Padding="6,2"
-                                                                    Background="{Binding BadgeBackground}"
-                                                                    CornerRadius="7">
-                                                                <TextBlock Foreground="White"
-                                                                           FontSize="11"
-                                                                           FontWeight="Bold"
-                                                                           Text="{Binding BadgeText}" />
-                                                            </Border>
-                                                            <TextBlock DockPanel.Dock="Right"
-                                                                       Foreground="#FF8ED0F7"
-                                                                       FontSize="11"
-                                                                       Text="{Binding TimeText}" />
-                                                        </DockPanel>
-                                                        <TextBlock Grid.Row="1"
-                                                                   Margin="0,8,0,0"
-                                                                   FontSize="14"
+                                                            CornerRadius="6"
+                                                            VerticalAlignment="Top">
+                                                        <TextBlock Foreground="White"
+                                                                   FontSize="10"
+                                                                   FontWeight="Bold"
+                                                                   Text="{Binding BadgeText}" />
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1"
+                                                                VerticalAlignment="Center">
+                                                        <TextBlock Foreground="White"
+                                                                   FontSize="12"
                                                                    FontWeight="SemiBold"
-                                                                   Foreground="White"
                                                                    TextWrapping="Wrap"
                                                                    Text="{Binding Headline}" />
-                                                        <TextBlock Grid.Row="2"
-                                                                   Margin="0,4,0,0"
+                                                        <TextBlock Margin="0,2,0,0"
                                                                    Foreground="#FFD9E7F3"
-                                                                   FontSize="12"
+                                                                   FontSize="11"
                                                                    TextWrapping="Wrap">
                                                             <Run Text="{Binding DetailLine, Mode=OneWay}" />
                                                             <Run Text="  ·  " Foreground="#667F9AB1" />
                                                             <Run Text="{Binding ContextLine, Mode=OneWay}" Foreground="#FF8ED0F7" />
                                                         </TextBlock>
-                                                    </Grid>
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="2"
+                                                               Margin="8,0,0,0"
+                                                               Foreground="#FF8ED0F7"
+                                                               FontSize="10"
+                                                               VerticalAlignment="Top"
+                                                               Text="{Binding TimeText}" />
                                                 </Grid>
                                             </Border>
                                         </DataTemplate>
@@ -236,10 +238,11 @@
                             </ScrollViewer>
                         </StackPanel>
                     </Border>
-                </StackPanel>
+                </Grid>
 
-                <Border Width="760"
-                        Height="704"
+                <Border x:Name="SearchTerminalHost"
+                        Width="1100"
+                        Height="760"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Top"
                         Background="#CC09131C"

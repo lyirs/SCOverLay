@@ -127,4 +127,43 @@ namespace StarCitizenOverLay
         public int? ExpediteFee { get; set; }
         public string? RentAt { get; set; }
     }
+
+    internal sealed class OverlayMissionDetailResponse
+    {
+        public string Id { get; set; } = string.Empty;
+        public string? Name { get; set; }
+        public string? NameChs { get; set; }
+        public string? Description { get; set; }
+        public string? DescriptionChs { get; set; }
+        public string? Category { get; set; }
+        public string? CategoryChs { get; set; }
+        public string? MissionType { get; set; }
+        public string? MissionTypeChs { get; set; }
+        public string? SourceType { get; set; }
+        public string? GameVersion { get; set; }
+        public OverlayMissionFlags? Flags { get; set; }
+        public List<OverlayDetailSection> Sections { get; set; } = [];
+        public OverlayMissionExtras Extras { get; set; } = new();
+    }
+
+    internal sealed class OverlayMissionFlags
+    {
+        public bool CanBeShared { get; set; }
+        public bool Illegal { get; set; }
+    }
+
+    internal sealed class OverlayMissionExtras
+    {
+        public List<string> Systems { get; set; } = [];
+        public JsonElement? Prerequisites { get; set; }
+        public JsonElement? RequiredIntros { get; set; }
+        public JsonElement? UnlockMissions { get; set; }
+        public JsonElement? ReceiveItems { get; set; }
+        public JsonElement? RequiredItems { get; set; }
+        public JsonElement? BlueprintRewards { get; set; }
+        public JsonElement? Reputation { get; set; }
+        public JsonElement? Combat { get; set; }
+        public decimal? ScripAmount { get; set; }
+        public JsonElement? FailReputationAmounts { get; set; }
+    }
 }
