@@ -21,5 +21,72 @@
 <body>
     <div id="app">正在加载 Blazor 面板...</div>
     <script src="_framework/blazor.webview.js"></script>
+    <script>
+        window.overlayFloatingWindows = (() => {
+            let dotNetRef = null;
+            let dragging = false;
+            let moveScheduled = false;
+            let lastClientX = 0;
+            let lastClientY = 0;
+
+            function flushMove() {
+                moveScheduled = false;
+                if (dragging && dotNetRef) {
+                    dotNetRef.invokeMethodAsync("HandleGlobalWindowPointerMove", lastClientX, lastClientY);
+                }
+            }
+
+            function onMouseMove(event) {
+                if (!dragging || !dotNetRef) {
+                    return;
+                }
+
+                lastClientX = event.clientX;
+                lastClientY = event.clientY;
+
+                if (!moveScheduled) {
+                    moveScheduled = true;
+                    window.requestAnimationFrame(flushMove);
+                }
+            }
+
+            function onMouseUp() {
+                if (!dragging || !dotNetRef) {
+                    return;
+                }
+
+                dragging = false;
+                dotNetRef.invokeMethodAsync("HandleGlobalWindowPointerUp");
+            }
+
+            function onWindowBlur() {
+                onMouseUp();
+            }
+
+            return {
+                register(ref) {
+                    if (dotNetRef) {
+                        this.unregister();
+                    }
+
+                    dotNetRef = ref;
+                    document.addEventListener("mousemove", onMouseMove, true);
+                    document.addEventListener("mouseup", onMouseUp, true);
+                    window.addEventListener("blur", onWindowBlur);
+                },
+                unregister() {
+                    dragging = false;
+                    moveScheduled = false;
+                    document.removeEventListener("mousemove", onMouseMove, true);
+                    document.removeEventListener("mouseup", onMouseUp, true);
+                    window.removeEventListener("blur", onWindowBlur);
+                    dotNetRef = null;
+                },
+                setDragging(active) {
+                    dragging = !!active;
+                }
+            };
+        })();
+    </script>
 </body>
 </html>

@@ -19,6 +19,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace StarCitizenOverLay
 {
@@ -45,6 +46,7 @@ namespace StarCitizenOverLay
         private readonly GlobalKeyboardShortcutListener _globalKeyboardShortcutListener;
         private readonly Forms.NotifyIcon _notifyIcon;
         private readonly Forms.ToolStripMenuItem _toggleOverlayMenuItem;
+        private readonly OverlayShellState _shellState;
         private bool _isInteractive = true;
         private bool _interactionModeBeforeHide = true;
         private bool _isOverlayVisible = true;
@@ -67,6 +69,7 @@ namespace StarCitizenOverLay
         public MainWindow()
         {
             InitializeComponent();
+            _shellState = ((App)System.Windows.Application.Current).Services.GetRequiredService<OverlayShellState>();
             DataContext = this;
             _monitorSyncTimer = new System.Windows.Threading.DispatcherTimer
             {
@@ -95,6 +98,7 @@ namespace StarCitizenOverLay
                 Visible = true
             };
             _notifyIcon.DoubleClick += NotifyIcon_DoubleClick;
+            _shellState.SetCombatLogRefreshHandler(RefreshCombatLogAsync);
             SourceInitialized += MainWindow_SourceInitialized;
             Loaded += MainWindow_Loaded;
             Closing += MainWindow_Closing;
@@ -127,6 +131,7 @@ namespace StarCitizenOverLay
             _globalKeyboardShortcutListener.Dispose();
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
+            _shellState.SetCombatLogRefreshHandler(null);
         }
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -256,6 +261,7 @@ namespace StarCitizenOverLay
             OverlayContentHost.Visibility = Visibility.Collapsed;
             _isOverlayVisible = false;
             ApplyInteractionMode();
+            UpdateInteractionStatus();
             ReturnFocusToGameWindow();
             UpdateTrayMenuText();
         }
@@ -268,6 +274,7 @@ namespace StarCitizenOverLay
             _isInteractive = _interactionModeBeforeHide;
             ForceOverlayToFront();
             ApplyInteractionMode();
+            UpdateInteractionStatus();
             UpdateTrayMenuText();
         }
 
@@ -505,6 +512,11 @@ namespace StarCitizenOverLay
                 InteractionModeText.Text = "鼠标穿透";
                 InteractionDescriptionText.Text = "鼠标点击会直接穿过悬浮层。按小键盘 1 可以恢复交互。";
             }
+
+            _shellState.SetInteractionState(
+                _isInteractive,
+                InteractionModeText.Text,
+                InteractionDescriptionText.Text);
         }
 
         private void InitializeSearchUi()

@@ -28,13 +28,191 @@
         box-sizing: border-box;
         color: #f6fbff;
         font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
+        position: relative;
+        overflow: visible;
+    }
+
+    .terminal-layout {
+        height: 100%;
+        position: relative;
+    }
+
+    .shell-sidebar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 360px;
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        gap: 14px;
+    }
+
+    .shell-sidebar-top {
+        display: grid;
+        gap: 14px;
+        align-self: start;
     }
 
     .terminal-shell {
-        height: 100%;
+        position: absolute;
+        min-width: 0;
         display: grid;
         grid-template-rows: auto 1fr;
         gap: 8px;
+        box-sizing: border-box;
+        pointer-events: auto;
+    }
+
+    .shell-card {
+        padding: 16px 18px;
+        border: 1px solid rgba(52, 176, 230, .68);
+        border-radius: 14px;
+        background: linear-gradient(180deg, rgba(11, 21, 32, .94), rgba(7, 16, 24, .88));
+        box-sizing: border-box;
+    }
+
+    .shell-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: #ffffff;
+    }
+
+    .shell-subtitle {
+        margin-top: 8px;
+        color: #d9e7f3;
+        font-size: 13px;
+        line-height: 1.45;
+    }
+
+    .shell-mode-label,
+    .shell-log-label {
+        color: #8ed0f7;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: .04em;
+    }
+
+    .shell-mode-title {
+        margin-top: 8px;
+        color: #ffffff;
+        font-size: 17px;
+        font-weight: 700;
+    }
+
+    .shell-mode-description {
+        margin-top: 8px;
+        color: #ffffff;
+        font-size: 13px;
+        line-height: 1.45;
+    }
+
+    .shell-mode-hint {
+        margin-top: 10px;
+        color: #8ed0f7;
+        font-size: 12px;
+    }
+
+    .shell-log-panel {
+        min-height: 0;
+        padding: 12px;
+        border: 1px solid rgba(61, 97, 123, .48);
+        border-radius: 12px;
+        background: linear-gradient(180deg, rgba(10, 20, 30, .92), rgba(7, 15, 23, .86));
+        display: grid;
+        grid-template-rows: auto auto auto minmax(0, 1fr);
+        gap: 8px;
+    }
+
+    .shell-log-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .shell-log-button {
+        width: 72px;
+        height: 24px;
+        border-radius: 7px;
+        border: 1px solid rgba(44, 169, 225, .9);
+        background: linear-gradient(180deg, #1776a8, #135e86);
+        color: #ffffff;
+        font-size: 11px;
+        cursor: pointer;
+    }
+
+    .shell-log-button:disabled {
+        opacity: .6;
+        cursor: default;
+    }
+
+    .shell-log-status {
+        color: #d9e7f3;
+        font-size: 12px;
+        line-height: 1.35;
+    }
+
+    .shell-log-summary {
+        color: #8ed0f7;
+        font-size: 11px;
+        line-height: 1.45;
+        word-break: break-word;
+    }
+
+    .shell-log-list {
+        min-height: 0;
+        overflow: auto;
+        display: grid;
+        gap: 6px;
+        align-content: start;
+    }
+
+    .shell-log-entry {
+        padding: 8px 7px;
+        border: 1px solid rgba(61, 97, 123, .28);
+        border-radius: 8px;
+        background: rgba(19, 29, 41, .68);
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 8px;
+    }
+
+    .shell-log-badge {
+        padding: 2px 6px;
+        border-radius: 6px;
+        color: #ffffff;
+        font-size: 10px;
+        font-weight: 700;
+        align-self: start;
+    }
+
+    .shell-log-headline {
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+
+    .shell-log-detail {
+        margin-top: 2px;
+        color: #d9e7f3;
+        font-size: 11px;
+        line-height: 1.4;
+        word-break: break-word;
+    }
+
+    .shell-log-context {
+        color: #8ed0f7;
+    }
+
+    .shell-log-time {
+        color: #8ed0f7;
+        font-size: 10px;
+        align-self: start;
+        white-space: nowrap;
     }
 
     .panel {
@@ -46,6 +224,29 @@
 
     .search-strip {
         padding: 10px 12px;
+    }
+
+    .search-strip-head {
+        margin-bottom: 8px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        cursor: move;
+        user-select: none;
+    }
+
+    .search-strip-label {
+        color: #dff4ff;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: .04em;
+    }
+
+    .search-strip-drag {
+        color: #79bad8;
+        font-size: 10px;
+        font-family: "Cascadia Mono", "Consolas", monospace;
     }
 
     .search-grid {
@@ -175,7 +376,49 @@
     .data-shell {
         min-height: 0;
         padding: 10px;
+        position: static;
+        overflow: visible;
+    }
+
+    .floating-preview {
+        position: absolute;
+        top: 10px;
+        z-index: 24;
+        width: 340px;
+        max-height: calc(100% - 20px);
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
         overflow: hidden;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, .44);
+        backdrop-filter: blur(10px);
+        pointer-events: auto;
+    }
+
+    .floating-preview-head {
+        padding: 8px 10px;
+        border-bottom: 1px solid rgba(63, 100, 127, .24);
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: start;
+        cursor: move;
+        user-select: none;
+    }
+
+    .floating-preview-close {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        border: 1px solid rgba(96, 152, 186, .34);
+        background: rgba(17, 31, 43, .94);
+        color: #d6eefc;
+        font-size: 11px;
+        cursor: pointer;
+    }
+
+    .floating-preview-body {
+        min-height: 0;
+        overflow: auto;
     }
 
     .column-shell {
@@ -259,6 +502,439 @@
         font-size: 11px;
         line-height: 1.4;
         word-break: break-word;
+    }
+
+    .mission-detail-description {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .mission-panel-stack {
+        display: grid;
+        gap: 8px;
+        padding: 8px 8px 12px 8px;
+    }
+
+    .mission-panel-footer {
+        padding-top: 4px;
+        color: rgba(213, 180, 96, .86);
+        font-size: 10px;
+        text-align: center;
+        letter-spacing: .02em;
+    }
+
+    .mission-card {
+        border: 1px solid rgba(63, 100, 127, .22);
+        border-radius: 8px;
+        background: rgba(9, 18, 27, .78);
+        overflow: hidden;
+    }
+
+    .mission-header-card {
+        padding: 10px 12px;
+    }
+
+    .mission-header-top {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: start;
+    }
+
+    .mission-header-name {
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1.08;
+        word-break: break-word;
+    }
+
+    .mission-header-en {
+        margin-top: 3px;
+        color: #9fd1ee;
+        font-size: 11px;
+        line-height: 1.3;
+        word-break: break-word;
+    }
+
+    .mission-version-tag {
+        padding: 3px 7px;
+        border: 1px solid rgba(98, 137, 212, .46);
+        border-radius: 999px;
+        background: rgba(41, 52, 86, .88);
+        color: #dce6ff;
+        font-size: 10px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .mission-tag-row,
+    .mission-requirement-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 8px;
+    }
+
+    .mission-tag {
+        padding: 2px 6px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .mission-tag-system {
+        border-color: rgba(92, 160, 218, .46);
+        background: rgba(28, 56, 88, .84);
+        color: #d9efff;
+    }
+
+    .mission-tag-type {
+        border-color: rgba(146, 111, 214, .42);
+        background: rgba(51, 36, 79, .86);
+        color: #ecdfff;
+    }
+
+    .mission-tag-category {
+        border-color: rgba(210, 154, 85, .42);
+        background: rgba(73, 51, 24, .84);
+        color: #ffe7bf;
+    }
+
+    .mission-tag-legal {
+        border-color: rgba(84, 191, 139, .42);
+        background: rgba(21, 69, 47, .86);
+        color: #dbffec;
+    }
+
+    .mission-tag-illegal {
+        border-color: rgba(215, 90, 114, .46);
+        background: rgba(82, 26, 39, .86);
+        color: #ffd9e1;
+    }
+
+    .mission-tag-neutral {
+        border-color: rgba(110, 139, 166, .38);
+        background: rgba(29, 41, 55, .84);
+        color: #d8e7f5;
+    }
+
+    .mission-card-head {
+        padding: 8px 10px 6px 10px;
+        border-bottom: 1px solid rgba(63, 100, 127, .18);
+    }
+
+    .mission-card-title {
+        font-size: 12px;
+        font-weight: 700;
+        color: #35d4ff;
+        letter-spacing: .06em;
+    }
+
+    .mission-card-summary {
+        margin-top: 2px;
+        color: #8fbee0;
+        font-size: 10px;
+        line-height: 1.4;
+    }
+
+    .mission-stat-grid {
+        padding: 8px 10px 0 10px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .mission-stat-card {
+        padding: 8px 10px;
+        border: 1px solid rgba(63, 100, 127, .24);
+        border-radius: 6px;
+        background: rgba(14, 24, 36, .88);
+    }
+
+    .mission-stat-title {
+        color: #8fbee0;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .06em;
+    }
+
+    .mission-stat-value {
+        margin-top: 4px;
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1.05;
+        word-break: break-word;
+    }
+
+    .mission-stat-gold .mission-stat-value {
+        color: #ffcf71;
+    }
+
+    .mission-stat-cyan .mission-stat-value {
+        color: #7fdfff;
+    }
+
+    .mission-stat-green .mission-stat-value {
+        color: #8ff2ba;
+    }
+
+    .mission-info-list {
+        display: grid;
+    }
+
+    .mission-requirement-lines {
+        padding: 10px 10px 0 10px;
+        display: grid;
+        gap: 4px;
+    }
+
+    .mission-requirement-line {
+        font-size: 11px;
+        line-height: 1.45;
+        word-break: break-word;
+    }
+
+    .mission-requirement-line-label {
+        color: #ffcf71;
+        font-weight: 700;
+    }
+
+    .mission-requirement-line-value {
+        color: #ffe39d;
+        font-weight: 700;
+    }
+
+    .mission-info-line {
+        display: grid;
+        grid-template-columns: 112px minmax(0, 1fr);
+        gap: 8px;
+        padding: 6px 10px;
+        border-top: 1px solid rgba(63, 100, 127, .14);
+        align-items: start;
+    }
+
+    .mission-info-line:first-child {
+        border-top: none;
+    }
+
+    .mission-info-label {
+        color: #8fbee0;
+        font-size: 10px;
+        font-weight: 700;
+    }
+
+    .mission-info-value {
+        color: #ffffff;
+        font-size: 11px;
+        text-align: right;
+        line-height: 1.4;
+        word-break: break-word;
+    }
+
+    .mission-list-items {
+        padding: 8px 10px 10px 10px;
+        display: grid;
+        gap: 3px;
+    }
+
+    .mission-list-item {
+        padding: 0;
+        border: none;
+        background: transparent;
+    }
+
+    .mission-list-primary {
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+
+    .mission-list-secondary {
+        display: inline;
+        margin-left: 4px;
+        color: #ffcf71;
+        font-size: 10px;
+        line-height: 1.3;
+        word-break: break-word;
+    }
+
+    .mission-card-body {
+        padding: 8px 10px 10px 10px;
+    }
+
+    .mission-card-tags {
+        padding: 0 10px 10px 10px;
+    }
+
+    .mission-card-groups {
+        padding: 0 10px 10px 10px;
+        display: grid;
+        gap: 8px;
+    }
+
+    .mission-requirement-sections {
+        padding: 0 10px 10px 10px;
+        display: grid;
+        gap: 6px;
+    }
+
+    .mission-requirement-section {
+        border-top: 1px solid rgba(63, 100, 127, .16);
+        padding-top: 6px;
+    }
+
+    .mission-subcard {
+        border: none;
+        border-top: 1px solid rgba(63, 100, 127, .16);
+        background: transparent;
+        overflow: visible;
+    }
+
+    .mission-overview-copy {
+        color: #dcebf7;
+        font-size: 11px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .mission-inline-title {
+        padding: 8px 0 2px 0;
+        color: #8fbee0;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .mission-inline-summary {
+        color: #79bad8;
+        font-size: 10px;
+        line-height: 1.35;
+    }
+
+    .mission-bullet-list {
+        display: grid;
+        gap: 2px;
+        margin-top: 4px;
+    }
+
+    .mission-bullet-list-compact {
+        margin-top: 2px;
+        gap: 1px;
+    }
+
+    .mission-bullet-item {
+        color: #ffffff;
+        font-size: 11px;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+
+    .mission-bullet-item::before {
+        content: "• ";
+        color: #6fb7db;
+    }
+
+    .mission-requirement-section .mission-bullet-item {
+        color: #53d7f8;
+    }
+
+    .mission-calculator-meta {
+        padding: 8px 10px 0 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        color: #8fbee0;
+        font-size: 10px;
+        line-height: 1.4;
+    }
+
+    .mission-calculator-meta strong {
+        color: #ffffff;
+        font-weight: 700;
+    }
+
+    .mission-rep-table {
+        padding: 8px 10px 10px 10px;
+        display: grid;
+        gap: 0;
+    }
+
+    .mission-rep-head,
+    .mission-rep-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1.65fr) 96px 86px;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .mission-rep-head {
+        padding: 0 10px 6px 10px;
+        color: #7295b2;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .08em;
+    }
+
+    .mission-rep-row {
+        padding: 7px 10px;
+        border-top: 1px solid rgba(63, 100, 127, .14);
+        color: #ffffff;
+        font-size: 11px;
+        line-height: 1.35;
+    }
+
+    .mission-rep-row-min {
+        background: rgba(12, 63, 74, .52);
+    }
+
+    .mission-rep-row-max {
+        background: rgba(92, 71, 18, .40);
+    }
+
+    .mission-rep-rank {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    .mission-rep-rank-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .mission-rep-chip {
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 9px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .mission-rep-chip-min {
+        background: rgba(10, 112, 139, .7);
+        color: #d2f7ff;
+    }
+
+    .mission-rep-chip-max {
+        background: rgba(163, 121, 19, .72);
+        color: #ffe7ac;
+    }
+
+    .mission-rep-xp,
+    .mission-rep-missions {
+        text-align: right;
+        font-family: "Cascadia Mono", "Consolas", monospace;
     }
 
     .section-row {
@@ -367,43 +1043,132 @@
         line-height: 1.25;
     }
 
-    .modifier-track {
-        height: 4px;
-        border-radius: 999px;
-        background: rgba(27, 49, 66, .9);
-        overflow: hidden;
-    }
-
-    .modifier-track-fill {
-        height: 100%;
-        border-radius: 999px;
-        background: linear-gradient(90deg, #22d7a0, #35a7ff);
-    }
-
-    .mission-column {
-        min-height: 0;
+    .modifier-head {
         display: grid;
-        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .modifier-percent {
+        padding: 1px 6px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 108, 137, .28);
+        background: rgba(67, 20, 30, .72);
+        color: #ff8196;
+        font-size: 10px;
+        font-weight: 700;
+        font-family: "Cascadia Mono", "Consolas", monospace;
+        white-space: nowrap;
+    }
+
+    .modifier-meta {
+        color: #8fbee0;
+        font-size: 10px;
+        font-family: "Cascadia Mono", "Consolas", monospace;
+        line-height: 1.25;
+    }
+
+    .material-row {
+        padding: 6px 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        border-top: 1px solid rgba(63, 100, 127, .16);
+    }
+
+    .material-chip {
+        padding: 3px 7px;
+        border-radius: 999px;
+        border: 1px solid rgba(66, 140, 186, .30);
+        background: rgba(17, 33, 46, .92);
+        color: #e8f5ff;
+        font: inherit;
+        font-size: 10px;
+        line-height: 1.2;
+        cursor: pointer;
+        white-space: nowrap;
     }
 
     .mission-source-button {
         font: inherit;
     }
-
-    .mission-detail-box {
-        min-height: 0;
-        display: grid;
-        grid-template-rows: auto auto minmax(0, 1fr);
-    }
 </style>
 
 <div class="terminal-root">
-    <div class="terminal-shell">
+    <div class="terminal-layout">
+        <aside class="shell-sidebar">
+            <div class="shell-sidebar-top">
+                <section class="shell-card">
+                    <div class="shell-title">星际公民 Overlay</div>
+                    <div class="shell-subtitle">全屏透明宿主层原型</div>
+                </section>
+
+                <section class="shell-card">
+                    <div class="shell-mode-label">模式</div>
+                    <div class="shell-mode-title">@ShellState.InteractionModeTitle</div>
+                    <div class="shell-mode-description">@ShellState.InteractionDescription</div>
+                    <div class="shell-mode-hint">@ShellState.InteractionToggleHint</div>
+                    <div class="shell-mode-hint" style="margin-top:6px;">@ShellState.VisibilityToggleHint</div>
+                </section>
+            </div>
+
+            <section class="shell-log-panel">
+                <div class="shell-log-header">
+                    <div class="shell-log-label">事件频道</div>
+                    <button type="button"
+                            class="shell-log-button"
+                            @onclick="RefreshCombatLogFromShellAsync"
+                            disabled="@ShellState.IsCombatLogRefreshing">
+                        @(ShellState.IsCombatLogRefreshing ? "读取中" : "刷新")
+                    </button>
+                </div>
+                <div class="shell-log-status">@ShellState.CombatLogStatus</div>
+                <div class="shell-log-summary">@ShellState.CombatLogSummary</div>
+                <div class="shell-log-list terminal-scroll">
+                    @if (ShellState.CombatLogEntries.Count == 0)
+                    {
+                        <div class="info-row" style="border-top:none;padding:0;color:#d9e7f3;">暂无事件。</div>
+                    }
+                    else
+                    {
+                        @foreach (var entry in ShellState.CombatLogEntries)
+                        {
+                            <div class="shell-log-entry"
+                                 @key="@($"{entry.BadgeText}:{entry.TimeText}:{entry.Headline}:{entry.DetailLine}")">
+                                <span class="shell-log-badge" style="@($"background:{entry.BadgeBackground};")">@entry.BadgeText</span>
+                                <div>
+                                    <div class="shell-log-headline">@entry.Headline</div>
+                                    <div class="shell-log-detail">
+                                        <span>@entry.DetailLine</span>
+                                        @if (!string.IsNullOrWhiteSpace(entry.ContextLine))
+                                        {
+                                            <span style="color:#667f9ab1;">  ·  </span>
+                                            <span class="shell-log-context">@entry.ContextLine</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="shell-log-time">@entry.TimeText</div>
+                            </div>
+                        }
+                    }
+                </div>
+            </section>
+        </aside>
+
+        <div class="terminal-shell" style="@BuildMainTerminalShellStyle()">
         <section class="panel search-strip">
+            <div class="search-strip-head"
+                 @onmousedown="BeginMainTerminalDrag"
+                 @onmousedown:preventDefault="true">
+                <div class="search-strip-label">物品终端</div>
+                <div class="search-strip-drag">拖动</div>
+            </div>
             <div class="search-grid">
                 <input class="search-input"
                        @bind="_query"
-                       @onkeydown="HandleSearchInputKeyDown"
+                       @bind:event="oninput"
+                       @onkeyup="HandleSearchInputKeyUp"
                        placeholder="搜索物品、商品、矿物，例如：VK-00 / Gold / 紫纳水晶"
                        disabled="@(!ApiService.HasConfiguration || _isSearching)" />
                 <button type="button" class="search-button" @onclick="SearchAsync" disabled="@(!ApiService.HasConfiguration || _isSearching)">
@@ -575,10 +1340,18 @@
                                         @if (_blueprintMaterials.Count > 0)
                                         {
                                             <div class="section-row">材料</div>
-                                            @foreach (var row in _blueprintMaterials)
-                                            {
-                                                <div class="info-row" @key="row.Key">@row.Text</div>
-                                            }
+                                            <div class="material-row">
+                                                @foreach (var material in _blueprintMaterials)
+                                                {
+                                                    <button type="button"
+                                                            class="material-chip"
+                                                            style="@BuildMaterialChipStyle(material)"
+                                                            @onclick="@(() => OpenMaterialPreviewWindowAsync(material))"
+                                                            @key="material.Key">
+                                                        @material.Text
+                                                    </button>
+                                                }
+                                            </div>
                                         }
 
                                         @if (GetBlueprintStatRows().Count > 0)
@@ -624,11 +1397,12 @@
                                                     @foreach (var modifier in slot.Modifiers)
                                                     {
                                                         <div class="modifier-row" @key="modifier.Key">
-                                                            <div class="modifier-name">• @modifier.DisplayName</div>
-                                                            <div class="modifier-track">
-                                                                <div class="modifier-track-fill" style="@BuildModifierTrackStyle(slot)"></div>
+                                                            <div class="modifier-head">
+                                                                <div class="modifier-name">• @modifier.DisplayName</div>
+                                                                <div class="modifier-percent" style="@BuildModifierPercentStyle(slot, modifier)">
+                                                                    @BuildModifierCurrentPercentText(slot, modifier)
+                                                                </div>
                                                             </div>
-                                                            <div class="modifier-value">@BuildModifierPreviewText(slot, modifier)</div>
                                                         </div>
                                                     }
                                                 </div>
@@ -645,76 +1419,21 @@
                                         <div class="column-title">任务来源</div>
                                         <div class="column-count">@_missionSources.Count.ToString("00")</div>
                                     </div>
-
-                                    <div class="mission-column">
-                                        @if (_missionSources.Count > 0)
+                                    <div class="mission-source-list terminal-scroll">
+                                        @foreach (var source in _missionSources)
                                         {
-                                            <div class="mission-source-list terminal-scroll">
-                                                @foreach (var source in _missionSources)
+                                            <button type="button"
+                                                    class="mission-source-button"
+                                                    @onclick="@(() => OpenMissionDetailWindowAsync(source))"
+                                                    style="@BuildMissionSourceButtonStyle(IsMissionSourceSelected(source))"
+                                                    @key="source.Key">
+                                                <div style="font-size:11px;font-weight:700;line-height:1.3;word-break:break-word;">@source.Title</div>
+                                                @if (!string.IsNullOrWhiteSpace(source.SecondaryText))
                                                 {
-                                                    <button type="button"
-                                                            class="mission-source-button"
-                                                            @onclick="@(() => LoadMissionDetailAsync(source))"
-                                                            style="@BuildMissionSourceButtonStyle(IsMissionSourceSelected(source))"
-                                                            @key="source.Key">
-                                                        <div style="font-size:11px;font-weight:700;line-height:1.3;word-break:break-word;">@source.Title</div>
-                                                        @if (!string.IsNullOrWhiteSpace(source.SecondaryText))
-                                                        {
-                                                            <div class="market-secondary" style="margin-top:2px;white-space:normal;">@source.SecondaryText</div>
-                                                        }
-                                                    </button>
+                                                    <div class="market-secondary" style="margin-top:2px;white-space:normal;">@source.SecondaryText</div>
                                                 }
-                                            </div>
+                                            </button>
                                         }
-
-                                        <div class="mission-detail-box">
-                                            @if (ShouldShowMissionDetailContent())
-                                            {
-                                                <div class="mission-detail-head">
-                                                    <div class="mission-detail-title">@_missionDetailTitle</div>
-                                                    @if (!string.IsNullOrWhiteSpace(_missionDetailSubtitle))
-                                                    {
-                                                        <div class="mission-detail-subtitle">@_missionDetailSubtitle</div>
-                                                    }
-                                                </div>
-
-                                                @if (!string.IsNullOrWhiteSpace(_missionDetailDescription))
-                                                {
-                                                    <div class="mission-detail-description">@_missionDetailDescription</div>
-                                                }
-
-                                                <div class="mission-detail-body terminal-scroll">
-                                                    @if (!string.IsNullOrWhiteSpace(_missionDetailStatus))
-                                                    {
-                                                        <div class="mission-empty">@_missionDetailStatus</div>
-                                                    }
-                                                    else
-                                                    {
-                                                        @foreach (var row in _missionDetailRows)
-                                                        {
-                                                            if (row.Kind == MissionRowKind.Section)
-                                                            {
-                                                                <div class="section-row" @key="row.Key">@row.Text</div>
-                                                            }
-                                                            else
-                                                            {
-                                                                <div class="info-row" @key="row.Key">
-                                                                    <div>@row.Text</div>
-                                                                    @if (!string.IsNullOrWhiteSpace(row.SecondaryText))
-                                                                    {
-                                                                        <div class="market-secondary" style="margin-top:2px;white-space:normal;">@row.SecondaryText</div>
-                                                                    }
-                                                                </div>
-                                                            }
-                                                        }
-                                                    }
-                                                </div>
-                                            }
-                                            else
-                                            {
-                                                <div class="mission-empty">@GetMissionDetailPlaceholder()</div>
-                                            }
-                                        </div>
                                     </div>
                                 </div>
                             }
@@ -736,8 +1455,740 @@
                             }
                         </div>
                     }
+
+                    @foreach (var previewWindow in _materialPreviewWindows)
+                    {
+                        <div class="panel floating-preview"
+                             style="@BuildMaterialPreviewWindowStyle(previewWindow)"
+                             @onmousedown="@(() => BringFloatingMaterialPreviewToFront(previewWindow))">
+                            <div class="floating-preview-head"
+                                 @onmousedown="@((MouseEventArgs args) => BeginFloatingWindowDrag($"material:{previewWindow.Key}", args))"
+                                 @onmousedown:preventDefault="true">
+                                <div style="min-width:0;">
+                                    <div class="column-title">材料预览</div>
+                                    @if (!string.IsNullOrWhiteSpace(previewWindow.UpdatedAt))
+                                    {
+                                        <div class="column-count">@previewWindow.UpdatedAt</div>
+                                    }
+                                </div>
+                                <button type="button" class="floating-preview-close" @onclick="@(() => CloseMaterialPreviewWindow(previewWindow))" title="关闭材料预览">×</button>
+                            </div>
+                            <div class="floating-preview-body terminal-scroll">
+                                <div class="blueprint-header">
+                                    <div class="blueprint-title">@previewWindow.Title</div>
+                                    @if (!string.IsNullOrWhiteSpace(previewWindow.Subtitle))
+                                    {
+                                        <div class="blueprint-subtitle">@previewWindow.Subtitle</div>
+                                    }
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(previewWindow.Status))
+                                {
+                                    <div class="mission-empty">@previewWindow.Status</div>
+                                }
+                                else
+                                {
+                                    @if (previewWindow.AccessRows.Count > 0)
+                                    {
+                                        <div class="section-row">获取途径</div>
+                                        @foreach (var row in previewWindow.AccessRows)
+                                        {
+                                            <div class="info-row" @key="@($"material-access:{previewWindow.Key}:{row}")">@row</div>
+                                        }
+                                    }
+
+                                    @if (previewWindow.MiningRows.Count > 0)
+                                    {
+                                        <div class="section-row">矿物分布</div>
+                                        @foreach (var row in previewWindow.MiningRows)
+                                        {
+                                            <div class="info-row" @key="@($"material-mining:{previewWindow.Key}:{row}")">@row</div>
+                                        }
+                                    }
+
+                                    @if (GetMaterialPreviewBuyRows(previewWindow).Count > 0)
+                                    {
+                                        <div class="section-row">买入</div>
+                                        @foreach (var row in GetMaterialPreviewBuyRows(previewWindow))
+                                        {
+                                            <div class="market-row" @key="row.Key">
+                                                <div style="min-width:0;">
+                                                    <div class="market-primary">@BuildPriceRowDisplay(row)</div>
+                                                    @if (!string.IsNullOrWhiteSpace(row.Detail))
+                                                    {
+                                                        <div class="market-secondary">@row.Detail</div>
+                                                    }
+                                                </div>
+                                                <div class="market-price">@row.PriceText</div>
+                                            </div>
+                                        }
+                                    }
+
+                                    @if (GetMaterialPreviewSellRows(previewWindow).Count > 0)
+                                    {
+                                        <div class="section-row">卖出</div>
+                                        @foreach (var row in GetMaterialPreviewSellRows(previewWindow))
+                                        {
+                                            <div class="market-row" @key="row.Key">
+                                                <div style="min-width:0;">
+                                                    <div class="market-primary">@BuildPriceRowDisplay(row)</div>
+                                                    @if (!string.IsNullOrWhiteSpace(row.Detail))
+                                                    {
+                                                        <div class="market-secondary">@row.Detail</div>
+                                                    }
+                                                </div>
+                                                <div class="market-price">@row.PriceText</div>
+                                            </div>
+                                        }
+                                    }
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (HasSelectedMissionDetail())
+                    {
+                        <div class="panel floating-preview"
+                             style="@BuildMissionDetailWindowStyle()"
+                             @onmousedown="@(() => BringMissionDetailToFront())">
+                            <div class="floating-preview-head"
+                                 @onmousedown="@((MouseEventArgs args) => BeginFloatingWindowDrag("mission", args))"
+                                 @onmousedown:preventDefault="true">
+                                <div style="min-width:0;">
+                                    <div class="column-title">任务详情</div>
+                                    @if (!string.IsNullOrWhiteSpace(_missionDetailSubtitle))
+                                    {
+                                        <div class="mission-detail-subtitle">@_missionDetailSubtitle</div>
+                                    }
+                                </div>
+                                <button type="button" class="floating-preview-close" @onclick="ClearMissionDetail" title="关闭任务详情">×</button>
+                            </div>
+                            <div class="floating-preview-body terminal-scroll">
+                                @if (!string.IsNullOrWhiteSpace(_missionDetailStatus))
+                                {
+                                    <div class="mission-empty">@_missionDetailStatus</div>
+                                }
+                                else if (_missionDetailPanel is not null)
+                                {
+                                    var reputationSection = GetMissionReputationSection();
+                                    var versionSection = GetMissionVersionSection();
+                                    var remainingExtraSections = GetMissionRemainingExtraSections();
+                                    var reputationMetaItems = GetMissionReputationMetaItems(reputationSection);
+                                    var reputationRankItems = GetMissionReputationRankItems(reputationSection);
+
+                                    <div class="mission-panel-stack">
+                                        <div class="mission-card mission-header-card">
+                                            <div class="mission-header-top">
+                                                <div style="min-width:0;">
+                                                    <div class="mission-header-name">@(!string.IsNullOrWhiteSpace(_missionDetailTitle) ? _missionDetailTitle : "任务详情")</div>
+                                                    @if (!string.IsNullOrWhiteSpace(_missionDetailPanel.EnglishName))
+                                                    {
+                                                        <div class="mission-header-en">@_missionDetailPanel.EnglishName</div>
+                                                    }
+                                                </div>
+                                                @if (!string.IsNullOrWhiteSpace(_missionDetailPanel.VersionTag))
+                                                {
+                                                    <div class="mission-version-tag">@_missionDetailPanel.VersionTag</div>
+                                                }
+                                            </div>
+
+                                            @if (_missionDetailPanel.HeaderTags.Count > 0)
+                                            {
+                                                <div class="mission-tag-row">
+                                                    @foreach (var tag in _missionDetailPanel.HeaderTags)
+                                                    {
+                                                        <div class="mission-tag @tag.ToneClass" @key="tag.Text">@tag.Text</div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+
+                                        @if (!string.IsNullOrWhiteSpace(_missionDetailPanel.Overview))
+                                        {
+                                            <div class="mission-card">
+                                                <div class="mission-card-head">
+                                                    <div class="mission-card-title">任务概览</div>
+                                                </div>
+                                                <div class="mission-card-body">
+                                                    <div class="mission-overview-copy">@_missionDetailPanel.Overview</div>
+                                                </div>
+                                            </div>
+                                        }
+
+                                        @if (_missionDetailPanel.RequirementLines.Count > 0 ||
+                                             _missionDetailPanel.RequirementTags.Count > 0 ||
+                                             _missionDetailPanel.RequirementSections.Count > 0)
+                                        {
+                                            <div class="mission-card">
+                                                <div class="mission-card-head">
+                                                    <div class="mission-card-title">任务需求</div>
+                                                </div>
+
+                                                @if (_missionDetailPanel.RequirementLines.Count > 0)
+                                                {
+                                                    <div class="mission-requirement-lines">
+                                                        @foreach (var line in _missionDetailPanel.RequirementLines)
+                                                        {
+                                                            <div class="mission-requirement-line" @key="line.Key">
+                                                                <span class="mission-requirement-line-label">@line.Label:</span>
+                                                                <span class="mission-requirement-line-value">@line.Value</span>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+
+                                                @if (_missionDetailPanel.RequirementTags.Count > 0)
+                                                {
+                                                    <div class="mission-card-tags">
+                                                        <div class="mission-requirement-tags">
+                                                            @foreach (var tag in _missionDetailPanel.RequirementTags)
+                                                            {
+                                                                <div class="mission-tag @tag.ToneClass" @key="tag.Text">@tag.Text</div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
+
+                                                @if (_missionDetailPanel.RequirementSections.Count > 0)
+                                                {
+                                                    <div class="mission-requirement-sections">
+                                                        @foreach (var missionSection in _missionDetailPanel.RequirementSections)
+                                                        {
+                                                            <div class="mission-requirement-section" @key="missionSection.Key">
+                                                                <div class="mission-inline-title">@missionSection.Title:</div>
+                                                                @if (!string.IsNullOrWhiteSpace(missionSection.Summary))
+                                                                {
+                                                                    <div class="mission-inline-summary">@missionSection.Summary</div>
+                                                                }
+                                                                @if (missionSection.Kind == MissionSectionKind.Info)
+                                                                {
+                                                                    <div class="mission-info-list">
+                                                                        @foreach (var item in missionSection.Items)
+                                                                        {
+                                                                            <div class="mission-info-line" @key="item.Key">
+                                                                                <div class="mission-info-label">@item.Primary</div>
+                                                                                <div class="mission-info-value">@item.Secondary</div>
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <div class="mission-bullet-list mission-bullet-list-compact">
+                                                                        @foreach (var item in missionSection.Items)
+                                                                        {
+                                                                            <div class="mission-bullet-item" @key="item.Key">@BuildMissionInlineItemText(item)</div>
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+
+                                        @if (_missionDetailPanel.StatCards.Count > 0 || _missionDetailPanel.RewardSections.Count > 0)
+                                        {
+                                            <div class="mission-card">
+                                                <div class="mission-card-head">
+                                                    <div class="mission-card-title">任务奖励</div>
+                                                </div>
+
+                                                @if (_missionDetailPanel.StatCards.Count > 0)
+                                                {
+                                                    <div class="mission-stat-grid">
+                                                        @foreach (var card in _missionDetailPanel.StatCards)
+                                                        {
+                                                            <div class="mission-stat-card @card.ToneClass" @key="card.Title">
+                                                                <div class="mission-stat-title">@card.Title</div>
+                                                                <div class="mission-stat-value">@card.Value</div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+
+                                                @if (_missionDetailPanel.RewardSections.Count > 0)
+                                                {
+                                                    <div class="mission-card-groups">
+                                                        @foreach (var missionSection in _missionDetailPanel.RewardSections)
+                                                        {
+                                                            <div class="mission-subcard" @key="missionSection.Key">
+                                                                <div class="mission-inline-title">@missionSection.Title</div>
+                                                                @if (!string.IsNullOrWhiteSpace(missionSection.Summary))
+                                                                {
+                                                                    <div class="mission-inline-summary">@missionSection.Summary</div>
+                                                                }
+                                                                @if (missionSection.Kind == MissionSectionKind.Info)
+                                                                {
+                                                                    <div class="mission-info-list">
+                                                                        @foreach (var item in missionSection.Items)
+                                                                        {
+                                                                            <div class="mission-info-line" @key="item.Key">
+                                                                                <div class="mission-info-label">@item.Primary</div>
+                                                                                <div class="mission-info-value">@item.Secondary</div>
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <div class="mission-bullet-list">
+                                                                        @foreach (var item in missionSection.Items)
+                                                                        {
+                                                                            <div class="mission-bullet-item" @key="item.Key">@BuildMissionInlineItemText(item)</div>
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+
+                                        @if (reputationSection is not null)
+                                        {
+                                            <div class="mission-card">
+                                                <div class="mission-card-head">
+                                                    <div class="mission-card-title">任务计算</div>
+                                                </div>
+
+                                                @if (reputationMetaItems.Count > 0)
+                                                {
+                                                    <div class="mission-calculator-meta">
+                                                        @foreach (var item in reputationMetaItems)
+                                                        {
+                                                            <div @key="item.Key"><strong>@item.Primary:</strong> @item.Secondary</div>
+                                                        }
+                                                    </div>
+                                                }
+
+                                                @if (reputationRankItems.Count > 0)
+                                                {
+                                                    <div class="mission-rep-table">
+                                                        <div class="mission-rep-head">
+                                                            <div>等级</div>
+                                                            <div class="mission-rep-xp">填满所需声望</div>
+                                                            <div class="mission-rep-missions">预计任务数</div>
+                                                        </div>
+
+                                                        @foreach (var item in reputationRankItems)
+                                                        {
+                                                            <div class="@BuildMissionReputationRowClass(item)" @key="item.Key">
+                                                                <div class="mission-rep-rank">
+                                                                    <div class="mission-rep-rank-name">@item.Primary</div>
+                                                                    @if (!string.IsNullOrWhiteSpace(item.Secondary) && item.Secondary.Contains("最低要求", StringComparison.CurrentCultureIgnoreCase))
+                                                                    {
+                                                                        <div class="mission-rep-chip mission-rep-chip-min">MIN</div>
+                                                                    }
+                                                                    @if (!string.IsNullOrWhiteSpace(item.Secondary) && item.Secondary.Contains("最高等级", StringComparison.CurrentCultureIgnoreCase))
+                                                                    {
+                                                                        <div class="mission-rep-chip mission-rep-chip-max">MAX</div>
+                                                                    }
+                                                                </div>
+                                                                <div class="mission-rep-xp">@BuildMissionReputationXpText(item)</div>
+                                                                <div class="mission-rep-missions">@BuildMissionReputationMissionCountText(item)</div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+
+                                        @foreach (var missionSection in remainingExtraSections)
+                                        {
+                                            var sectionItems = GetMissionFilteredExtraItems(missionSection);
+                                            if (sectionItems.Count > 0)
+                                            {
+                                                <div class="mission-card" @key="missionSection.Key">
+                                                    <div class="mission-card-head">
+                                                        <div class="mission-card-title">@missionSection.Title</div>
+                                                        @if (!string.IsNullOrWhiteSpace(missionSection.Summary))
+                                                        {
+                                                            <div class="mission-card-summary">@missionSection.Summary</div>
+                                                        }
+                                                    </div>
+
+                                                    @if (missionSection.Kind == MissionSectionKind.Info)
+                                                    {
+                                                        <div class="mission-info-list">
+                                                            @foreach (var item in sectionItems)
+                                                            {
+                                                                <div class="mission-info-line" @key="item.Key">
+                                                                    <div class="mission-info-label">@item.Primary</div>
+                                                                    <div class="mission-info-value">@item.Secondary</div>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="mission-list-items">
+                                                            @foreach (var item in sectionItems)
+                                                            {
+                                                                <div class="mission-list-item" @key="item.Key">
+                                                                    <div class="mission-list-primary">@item.Primary</div>
+                                                                    @if (!string.IsNullOrWhiteSpace(item.Secondary))
+                                                                    {
+                                                                        <div class="mission-list-secondary">@item.Secondary</div>
+                                                                    }
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        }
+
+                                        @if (versionSection is not null)
+                                        {
+                                            <div class="mission-card" @key="versionSection.Key">
+                                                <div class="mission-card-head">
+                                                    <div class="mission-card-title">@versionSection.Title</div>
+                                                </div>
+                                                <div class="mission-info-list">
+                                                    @foreach (var item in versionSection.Items)
+                                                    {
+                                                        <div class="mission-info-line" @key="item.Key">
+                                                            <div class="mission-info-label">@item.Primary</div>
+                                                            <div class="mission-info-value">@item.Secondary</div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                        <div class="mission-panel-footer">由 UEE-TIML 制作</div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="mission-empty">暂无任务详情</div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (false && HasSelectedMissionDetail())
+                    {
+                        <div class="panel floating-preview"
+                             style="@BuildMissionDetailWindowStyle()"
+                             @onmousedown="@(() => BringMissionDetailToFront())">
+                            <div class="floating-preview-head"
+                                 @onmousedown="@((MouseEventArgs args) => BeginFloatingWindowDrag("mission", args))"
+                                 @onmousedown:preventDefault="true">
+                                <div style="min-width:0;">
+                                    <div class="column-title">任务详情</div>
+                                    @if (!string.IsNullOrWhiteSpace(_missionDetailSubtitle))
+                                    {
+                                        <div class="mission-detail-subtitle">@_missionDetailSubtitle</div>
+                                    }
+                                </div>
+                                <button type="button" class="floating-preview-close" @onclick="ClearMissionDetail" title="关闭任务详情">×</button>
+                            </div>
+                            <div class="floating-preview-body terminal-scroll">
+                                @if (!string.IsNullOrWhiteSpace(_missionDetailStatus))
+                                {
+                                    <div class="mission-empty">@_missionDetailStatus</div>
+                                }
+                                else if (_missionDetailPanel is not null)
+                                {
+                                    <div class="mission-panel-stack">
+                                        <div class="mission-card mission-header-card">
+                                            <div class="mission-header-top">
+                                                <div style="min-width:0;">
+                                                    <div class="mission-header-name">@(!string.IsNullOrWhiteSpace(_missionDetailTitle) ? _missionDetailTitle : "任务详情")</div>
+                                                    @if (!string.IsNullOrWhiteSpace(_missionDetailPanel.EnglishName))
+                                                    {
+                                                        <div class="mission-header-en">@_missionDetailPanel.EnglishName</div>
+                                                    }
+                                                </div>
+                                                @if (!string.IsNullOrWhiteSpace(_missionDetailPanel.VersionTag))
+                                                {
+                                                    <div class="mission-version-tag">@_missionDetailPanel.VersionTag</div>
+                                                }
+                                            </div>
+
+                                            @if (_missionDetailPanel.HeaderTags.Count > 0)
+                                            {
+                                                <div class="mission-tag-row">
+                                                    @foreach (var tag in _missionDetailPanel.HeaderTags)
+                                                    {
+                                                        <div class="mission-tag @tag.ToneClass" @key="tag.Text">@tag.Text</div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+
+                                        @if (!string.IsNullOrWhiteSpace(_missionDetailPanel.Overview))
+                                        {
+                                            <div class="mission-card">
+                                                <div class="mission-card-head">
+                                                    <div class="mission-card-title">任务概览</div>
+                                                </div>
+                                                <div class="mission-card-body">
+                                                    <div class="mission-overview-copy">@_missionDetailPanel.Overview</div>
+                                                </div>
+                                            </div>
+                                        }
+
+                                        @if (_missionDetailPanel.StatCards.Count > 0 || _missionDetailPanel.RewardSections.Count > 0)
+                                        {
+                                            <div class="mission-card">
+                                                <div class="mission-card-head">
+                                                    <div class="mission-card-title">任务奖励</div>
+                                                </div>
+
+                                                @if (_missionDetailPanel.StatCards.Count > 0)
+                                                {
+                                                    <div class="mission-stat-grid">
+                                                        @foreach (var card in _missionDetailPanel.StatCards)
+                                                        {
+                                                            <div class="mission-stat-card @card.ToneClass" @key="card.Title">
+                                                                <div class="mission-stat-title">@card.Title</div>
+                                                                <div class="mission-stat-value">@card.Value</div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+
+                                                @if (_missionDetailPanel.RewardSections.Count > 0)
+                                                {
+                                                    <div class="mission-card-groups">
+                                                        @foreach (var missionSection in _missionDetailPanel.RewardSections)
+                                                        {
+                                                            <div class="mission-subcard" @key="missionSection.Key">
+                                                                <div class="mission-card-head">
+                                                                    <div class="mission-card-title">@missionSection.Title</div>
+                                                                    @if (!string.IsNullOrWhiteSpace(missionSection.Summary))
+                                                                    {
+                                                                        <div class="mission-card-summary">@missionSection.Summary</div>
+                                                                    }
+                                                                </div>
+
+                                                                @if (missionSection.Kind == MissionSectionKind.Info)
+                                                                {
+                                                                    <div class="mission-info-list">
+                                                                        @foreach (var item in missionSection.Items)
+                                                                        {
+                                                                            <div class="mission-info-line" @key="item.Key">
+                                                                                <div class="mission-info-label">@item.Primary</div>
+                                                                                <div class="mission-info-value">@item.Secondary</div>
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <div class="mission-list-items">
+                                                                        @foreach (var item in missionSection.Items)
+                                                                        {
+                                                                            <div class="mission-list-item" @key="item.Key">
+                                                                                <div class="mission-list-primary">@item.Primary</div>
+                                                                                @if (!string.IsNullOrWhiteSpace(item.Secondary))
+                                                                                {
+                                                                                    <div class="mission-list-secondary">@item.Secondary</div>
+                                                                                }
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+
+                                        @if (_missionDetailPanel.RequirementLines.Count > 0 ||
+                                             _missionDetailPanel.RequirementTags.Count > 0 ||
+                                             _missionDetailPanel.RequirementSections.Count > 0)
+                                        {
+                                            <div class="mission-card">
+                                                <div class="mission-card-head">
+                                                    <div class="mission-card-title">任务需求</div>
+                                                </div>
+
+                                                @if (_missionDetailPanel.RequirementLines.Count > 0)
+                                                {
+                                                    <div class="mission-info-list">
+                                                        @foreach (var line in _missionDetailPanel.RequirementLines)
+                                                        {
+                                                            <div class="mission-info-line" @key="line.Key">
+                                                                <div class="mission-info-label">@line.Label</div>
+                                                                <div class="mission-info-value">@line.Value</div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+
+                                                @if (_missionDetailPanel.RequirementTags.Count > 0)
+                                                {
+                                                    <div class="mission-card-tags">
+                                                        <div class="mission-requirement-tags">
+                                                            @foreach (var tag in _missionDetailPanel.RequirementTags)
+                                                            {
+                                                                <div class="mission-tag @tag.ToneClass" @key="tag.Text">@tag.Text</div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
+
+                                                @if (_missionDetailPanel.RequirementSections.Count > 0)
+                                                {
+                                                    <div class="mission-card-groups">
+                                                        @foreach (var missionSection in _missionDetailPanel.RequirementSections)
+                                                        {
+                                                            <div class="mission-subcard" @key="missionSection.Key">
+                                                                <div class="mission-card-head">
+                                                                    <div class="mission-card-title">@missionSection.Title</div>
+                                                                    @if (!string.IsNullOrWhiteSpace(missionSection.Summary))
+                                                                    {
+                                                                        <div class="mission-card-summary">@missionSection.Summary</div>
+                                                                    }
+                                                                </div>
+
+                                                                @if (missionSection.Kind == MissionSectionKind.Info)
+                                                                {
+                                                                    <div class="mission-info-list">
+                                                                        @foreach (var item in missionSection.Items)
+                                                                        {
+                                                                            <div class="mission-info-line" @key="item.Key">
+                                                                                <div class="mission-info-label">@item.Primary</div>
+                                                                                <div class="mission-info-value">@item.Secondary</div>
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <div class="mission-list-items">
+                                                                        @foreach (var item in missionSection.Items)
+                                                                        {
+                                                                            <div class="mission-list-item" @key="item.Key">
+                                                                                <div class="mission-list-primary">@item.Primary</div>
+                                                                                @if (!string.IsNullOrWhiteSpace(item.Secondary))
+                                                                                {
+                                                                                    <div class="mission-list-secondary">@item.Secondary</div>
+                                                                                }
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+
+                                        @foreach (var missionSection in _missionDetailPanel.ExtraSections)
+                                        {
+                                            <div class="mission-card" @key="missionSection.Key">
+                                                <div class="mission-card-head">
+                                                    <div class="mission-card-title">@missionSection.Title</div>
+                                                    @if (!string.IsNullOrWhiteSpace(missionSection.Summary))
+                                                    {
+                                                        <div class="mission-card-summary">@missionSection.Summary</div>
+                                                    }
+                                                </div>
+
+                                                @if (missionSection.Kind == MissionSectionKind.Info)
+                                                {
+                                                    <div class="mission-info-list">
+                                                        @foreach (var item in missionSection.Items)
+                                                        {
+                                                            <div class="mission-info-line" @key="item.Key">
+                                                                <div class="mission-info-label">@item.Primary</div>
+                                                                <div class="mission-info-value">@item.Secondary</div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="mission-list-items">
+                                                        @foreach (var item in missionSection.Items)
+                                                        {
+                                                            <div class="mission-list-item" @key="item.Key">
+                                                                <div class="mission-list-primary">@item.Primary</div>
+                                                                @if (!string.IsNullOrWhiteSpace(item.Secondary))
+                                                                {
+                                                                    <div class="mission-list-secondary">@item.Secondary</div>
+                                                                }
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="mission-empty">暂无任务详情</div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (false && HasSelectedMissionDetail())
+                    {
+                        <div class="panel floating-preview"
+                             style="@BuildMissionDetailWindowStyle()"
+                             @onmousedown="@(() => BringMissionDetailToFront())">
+                            <div class="floating-preview-head"
+                                 @onmousedown="@((MouseEventArgs args) => BeginFloatingWindowDrag("mission", args))"
+                                 @onmousedown:preventDefault="true">
+                                <div style="min-width:0;">
+                                    <div class="column-title">任务详情</div>
+                                    @if (!string.IsNullOrWhiteSpace(_missionDetailSubtitle))
+                                    {
+                                        <div class="mission-detail-subtitle">@_missionDetailSubtitle</div>
+                                    }
+                                </div>
+                                <button type="button" class="floating-preview-close" @onclick="ClearMissionDetail" title="关闭任务详情">×</button>
+                            </div>
+                            <div class="floating-preview-body terminal-scroll">
+                                <div class="mission-detail-head">
+                                    <div class="mission-detail-title">@_missionDetailTitle</div>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(_missionDetailDescription))
+                                {
+                                    <div class="mission-detail-description">@_missionDetailDescription</div>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(_missionDetailStatus))
+                                {
+                                    <div class="mission-empty">@_missionDetailStatus</div>
+                                }
+                                else
+                                {
+                                    @foreach (var row in _missionDetailRows)
+                                    {
+                                        if (row.Kind == MissionRowKind.Section)
+                                        {
+                                            <div class="section-row" @key="row.Key">@row.Text</div>
+                                        }
+                                        else
+                                        {
+                                            <div class="info-row" @key="row.Key">
+                                                <div>@row.Text</div>
+                                                @if (!string.IsNullOrWhiteSpace(row.SecondaryText))
+                                                {
+                                                    <div class="market-secondary" style="margin-top:2px;white-space:normal;">@row.SecondaryText</div>
+                                                }
+                                            </div>
+                                        }
+                                    }
+                                }
+                            </div>
+                        </div>
+                    }
                 </section>
             </div>
         </div>
     </div>
+</div>
 </div>

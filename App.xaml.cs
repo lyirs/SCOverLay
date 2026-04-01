@@ -11,11 +11,13 @@ namespace StarCitizenOverLay
     public partial class App : System.Windows.Application
     {
         private readonly Microsoft.Extensions.DependencyInjection.ServiceProvider _serviceProvider;
+        public Microsoft.Extensions.DependencyInjection.ServiceProvider Services => _serviceProvider;
 
         public App()
         {
             var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
             services.AddWpfBlazorWebView();
+            services.AddSingleton<OverlayShellState>();
             services.AddSingleton<OverlaySearchApiService>();
 
             _serviceProvider = services.BuildServiceProvider();

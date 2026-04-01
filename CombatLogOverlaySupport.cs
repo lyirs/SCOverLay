@@ -48,12 +48,28 @@ namespace StarCitizenOverLay
             CombatLogStatusText.Text = "等待读取日志。";
             CombatLogSummaryText.Text = "将自动定位 Star Citizen 安装目录并解析最近战斗、上下线和异常事件。";
             UpdateCombatLogRefreshButtonUi();
+            SyncCombatLogShellState();
         }
 
         private void UpdateCombatLogRefreshButtonUi()
         {
             CombatLogRefreshButton.IsEnabled = !_isRefreshingCombatLog;
             CombatLogRefreshButton.Content = _isRefreshingCombatLog ? "读取中..." : "刷新日志";
+        }
+
+        private void SyncCombatLogShellState()
+        {
+            _shellState.SetCombatLogState(
+                _isRefreshingCombatLog,
+                CombatLogStatusText.Text,
+                CombatLogSummaryText.Text,
+                CombatLogEntries.Select(entry => new OverlayShellLogEntry(
+                    entry.BadgeText,
+                    entry.BadgeBackground,
+                    entry.TimeText,
+                    entry.Headline,
+                    entry.DetailLine,
+                    entry.ContextLine)));
         }
 
         private async void CombatLogRefreshButton_Click(object sender, RoutedEventArgs e)
@@ -73,6 +89,7 @@ namespace StarCitizenOverLay
             CombatLogStatusText.Text = "正在读取日志...";
             CombatLogSummaryText.Text = "正在定位安装目录并解析最近战斗、上下线和异常事件。";
             CombatLogEntries.Clear();
+            SyncCombatLogShellState();
 
             try
             {
@@ -130,6 +147,7 @@ namespace StarCitizenOverLay
             {
                 _isRefreshingCombatLog = false;
                 UpdateCombatLogRefreshButtonUi();
+                SyncCombatLogShellState();
             }
         }
 

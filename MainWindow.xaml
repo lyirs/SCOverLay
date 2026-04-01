@@ -88,7 +88,8 @@
             <Grid Margin="24">
 
                 <Grid Width="360"
-                      HorizontalAlignment="Left">
+                      HorizontalAlignment="Left"
+                      Visibility="Collapsed">
                     <StackPanel HorizontalAlignment="Left"
                                 VerticalAlignment="Top">
                         <Border Padding="18"
@@ -241,14 +242,14 @@
                 </Grid>
 
                 <Border x:Name="SearchTerminalHost"
-                        Width="1100"
                         Height="760"
-                        HorizontalAlignment="Center"
+                        Margin="0"
+                        HorizontalAlignment="Stretch"
                         VerticalAlignment="Top"
-                        Background="#CC09131C"
-                        BorderBrush="#FF2CA9E1"
-                        BorderThickness="1"
-                        CornerRadius="14">
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        BorderThickness="0"
+                        CornerRadius="0">
                     <blazor:BlazorWebView x:Name="SearchBlazorWebView"
                                           HostPage="wwwroot\index.html"
                                           Focusable="True"
