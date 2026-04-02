@@ -17,8 +17,8 @@
             <div class="mission-results-grid">
                 @foreach (var card in Cards)
                 {
-                            <button type="button"
-                                    class="mission-search-card @(IsSelected(card) ? "selected" : string.Empty)"
+                    <button type="button"
+                            class="mission-search-card @(IsSelected(card) ? "selected" : string.Empty)"
                             @onclick="@(() => OnSelect.InvokeAsync(card.Id))"
                             @key="@($"mission:{card.Id}")">
                         <div class="mission-search-head">

@@ -1935,7 +1935,7 @@ namespace StarCitizenOverLay
 
                 if (TryGetDecimal(summary, "poolChancePercent", out var poolChancePercent) && poolChancePercent > 0)
                 {
-                    summaryParts.Add($"瑙﹀彂 {FormatNumber(poolChancePercent)}%");
+                    summaryParts.Add($"触发 {FormatNumber(poolChancePercent)}%");
                 }
             }
 
@@ -2978,7 +2978,7 @@ namespace StarCitizenOverLay
 
                 if (TryGetDecimal(summary, "poolChancePercent", out var poolChance) && poolChance > 0)
                 {
-                    parts.Add($"瑙﹀彂 {FormatNumber(poolChance)}%");
+                    parts.Add($"触发 {FormatNumber(poolChance)}%");
                 }
 
                 if (parts.Count > 0)

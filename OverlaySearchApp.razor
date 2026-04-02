@@ -425,7 +425,7 @@
                                     {
                                         <div class="data-col">
                                             <div class="panel-header">
-                                                <div class="panel-title">涔板叆</div>
+                                                <div class="panel-title">买入</div>
                                                 <div class="mono">@GetBuyRows().Count.ToString("00")</div>
                                             </div>
                                             <div class="data-body ts">
@@ -450,7 +450,7 @@
                                     {
                                         <div class="data-col">
                                             <div class="panel-header">
-                                                <div class="panel-title">鍗栧嚭</div>
+                                                <div class="panel-title">卖出</div>
                                                 <div class="mono">@GetSellRows().Count.ToString("00")</div>
                                             </div>
                                             <div class="data-body ts">
@@ -521,7 +521,7 @@
 
                                                 @if (_blueprintMaterials.Count > 0)
                                                 {
-                                                    <div class="section-title">鏉愭枡</div>
+                                                    <div class="section-title">材料</div>
                                                     <div class="chip-row">
                                                         @foreach (var material in _blueprintMaterials)
                                                         {
@@ -629,7 +629,7 @@
             <div class="overlay-window" style="@BuildMaterialPreviewWindowStyle(previewWindow)" @onmousedown="@(() => BringFloatingMaterialPreviewToFront(previewWindow))">
                 <div class="window-head" @onmousedown='args => BeginFloatingWindowDrag($"material:{previewWindow.Key}", args)' @onmousedown:preventDefault="true">
                     <div style="min-width:0;">
-                        <div class="window-title">鏉愭枡棰勮</div>
+                        <div class="window-title">材料预览</div>
                         @if (!string.IsNullOrWhiteSpace(previewWindow.UpdatedAt))
                         {
                             <div class="window-subtitle">@previewWindow.UpdatedAt</div>
@@ -678,7 +678,7 @@
                         @if (GetMaterialPreviewBuyRows(previewWindow).Count > 0)
                         {
                             <div class="data-col">
-                                <div class="section-title">涔板叆</div>
+                                <div class="section-title">买入</div>
                                 @foreach (var buyRow in GetMaterialPreviewBuyRows(previewWindow))
                                 {
                                     <div class="market-row" @key="@($"material-buy:{previewWindow.Key}:{buyRow.Key}")">
@@ -698,7 +698,7 @@
                         @if (GetMaterialPreviewSellRows(previewWindow).Count > 0)
                         {
                             <div class="data-col">
-                                <div class="section-title">鍗栧嚭</div>
+                                <div class="section-title">卖出</div>
                                 @foreach (var sellRow in GetMaterialPreviewSellRows(previewWindow))
                                 {
                                     <div class="market-row" @key="@($"material-sell:{previewWindow.Key}:{sellRow.Key}")">
