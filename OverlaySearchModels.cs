@@ -10,6 +10,14 @@ namespace StarCitizenOverLay
         public List<OverlaySearchItem> Results { get; set; } = [];
     }
 
+    internal sealed class OverlayMissionSearchResponse
+    {
+        public string Query { get; set; } = string.Empty;
+        public int? RewardUec { get; set; }
+        public int Total { get; set; }
+        public List<OverlayMissionSearchItem> Results { get; set; } = [];
+    }
+
     internal sealed class OverlaySearchItem
     {
         public string CategoryKey { get; set; } = string.Empty;
@@ -25,6 +33,23 @@ namespace StarCitizenOverLay
         public int? Rarity { get; set; }
         public int Score { get; set; }
         public OverlayItemFlags? Flags { get; set; }
+    }
+
+    internal sealed class OverlayMissionSearchItem
+    {
+        public string Id { get; set; } = string.Empty;
+        public string? Name { get; set; }
+        public string? NameChs { get; set; }
+        public string? Category { get; set; }
+        public string? CategoryChs { get; set; }
+        public string? MissionType { get; set; }
+        public string? MissionTypeChs { get; set; }
+        public int? RewardUec { get; set; }
+        public List<string> Systems { get; set; } = [];
+        public string? SourceType { get; set; }
+        public string? GameVersion { get; set; }
+        public int Score { get; set; }
+        public OverlayMissionFlags? Flags { get; set; }
     }
 
     internal sealed class OverlayItemFlags

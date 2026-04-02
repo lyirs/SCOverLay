@@ -1,0 +1,84 @@
+@namespace StarCitizenOverLay
+@using System
+
+<section class="overlay-panel mission-results-panel">
+    <div class="panel-header">
+        <div class="panel-title">任务结果</div>
+        <div class="mono">@ResultCountText</div>
+    </div>
+
+    <div class="result-body ts">
+        @if (Cards.Count == 0)
+        {
+            <div class="empty-text">@EmptyText</div>
+        }
+        else
+        {
+            <div class="mission-results-grid">
+                @foreach (var card in Cards)
+                {
+                            <button type="button"
+                                    class="mission-search-card @(IsSelected(card) ? "selected" : string.Empty)"
+                            @onclick="@(() => OnSelect.InvokeAsync(card.Id))"
+                            @key="@($"mission:{card.Id}")">
+                        <div class="mission-search-head">
+                            <div class="mission-search-badge">@card.BadgeText</div>
+                            <div style="min-width:0;">
+                                <div class="mission-search-title">@card.PrimaryName</div>
+                                @if (!string.IsNullOrWhiteSpace(card.SecondaryName))
+                                {
+                                    <div class="mission-search-sub">@card.SecondaryName</div>
+                                }
+                            </div>
+                        </div>
+
+                        @if (card.Tags.Count > 0)
+                        {
+                            <div class="mission-search-tags">
+                                @foreach (var tag in card.Tags)
+                                {
+                                    <span style="@tag.Style" @key="@($"{card.Id}:{tag.Text}")">@tag.Text</span>
+                                }
+                            </div>
+                        }
+
+                        <div class="mission-search-stats">
+                            <div class="mission-search-stat">
+                                <div class="mission-search-stat-label">奖励</div>
+                                <div class="mission-search-stat-value reward">@card.RewardText</div>
+                            </div>
+                            <div class="mission-search-stat">
+                                <div class="mission-search-stat-label">类型</div>
+                                <div class="mission-search-stat-value">@card.TypeText</div>
+                            </div>
+                            <div class="mission-search-stat">
+                                <div class="mission-search-stat-label">版本</div>
+                                <div class="mission-search-stat-value">@card.VersionText</div>
+                            </div>
+                        </div>
+                    </button>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<OverlaySearchApp.MissionSearchCardVm> Cards { get; set; } = [];
+
+    [Parameter]
+    public string EmptyText { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? SelectedMissionId { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnSelect { get; set; }
+
+    private string ResultCountText => Cards.Count.ToString("00");
+
+    private bool IsSelected(OverlaySearchApp.MissionSearchCardVm card)
+        => !string.IsNullOrWhiteSpace(SelectedMissionId)
+           && string.Equals(SelectedMissionId, card.Id, StringComparison.Ordinal);
+}

@@ -1,0 +1,85 @@
+@namespace StarCitizenOverLay
+
+<style>
+    .mission-combat-stack{display:grid;gap:14px}
+    .mission-combat-summary{display:flex;flex-wrap:wrap;gap:10px}
+    .mission-combat-summary-pill{padding:8px 12px;border-radius:10px;border:1px solid rgba(63,100,127,.28);background:rgba(14,24,34,.8);color:#f1f8ff;font-size:13px;font-weight:700}
+    .mission-combat-summary-pill.hostile{border-color:rgba(201,93,78,.42);color:#ffcb98}
+    .mission-combat-summary-pill.friendly{border-color:rgba(55,156,116,.42);color:#c9ffe1}
+    .mission-combat-group-list{display:grid;gap:10px}
+    .mission-combat-group{padding:12px;border-radius:10px;border:1px solid rgba(63,100,127,.22);background:rgba(10,18,27,.42);display:grid;gap:10px}
+    .mission-combat-group.friendly{border-color:rgba(55,156,116,.26);background:rgba(12,28,23,.44)}
+    .mission-combat-group-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start}
+    .mission-combat-group-title{color:#ffd08f;font-size:16px;font-weight:700}
+    .mission-combat-group.friendly .mission-combat-group-title{color:#aaf0c6}
+    .mission-combat-group-meta{display:flex;flex-wrap:wrap;gap:8px}
+    .mission-combat-chip{padding:4px 10px;border-radius:8px;border:1px solid rgba(90,118,143,.28);background:rgba(18,31,45,.9);color:#cfe3f4;font-size:12px;line-height:1.3;white-space:nowrap}
+    .mission-combat-chip.muted{color:#90a8be}
+    .mission-ship-pool{display:flex;flex-wrap:wrap;gap:8px}
+</style>
+
+@if (Combat is null)
+{
+    <div class="empty-text" style="padding:0;">暂无战斗信息。</div>
+}
+else
+{
+    <div class="mission-combat-stack">
+        <div class="mission-combat-summary">
+            @if (!string.IsNullOrWhiteSpace(Combat.HostileSummary))
+            {
+                <div class="mission-combat-summary-pill hostile">@Combat.HostileSummary</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Combat.FriendlySummary))
+            {
+                <div class="mission-combat-summary-pill friendly">@Combat.FriendlySummary</div>
+            }
+        </div>
+
+        @if (Combat.Groups.Count > 0)
+        {
+            <div style="display:grid;gap:8px;">
+                <div class="sub-title">战斗分组</div>
+                <div class="mission-combat-group-list">
+                    @foreach (var group in Combat.Groups)
+                    {
+                        <div class="mission-combat-group @(group.IsFriendly ? "friendly" : string.Empty)" @key="group.Key">
+                            <div class="mission-combat-group-head">
+                                <div class="mission-combat-group-title">@group.Title</div>
+                                <div class="mission-combat-chip">@group.CountText</div>
+                            </div>
+                            <div class="mission-combat-group-meta">
+                                @if (!string.IsNullOrWhiteSpace(group.ChanceText))
+                                {
+                                    <div class="mission-combat-chip muted">@group.ChanceText</div>
+                                }
+                                @foreach (var wave in group.Waves)
+                                {
+                                    <div class="mission-combat-chip muted" @key="wave.Key">@wave.Text</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (Combat.ShipPool.Count > 0)
+        {
+            <div style="display:grid;gap:8px;">
+                <div class="sub-title">舰船池 @Combat.ShipPool.Count 种</div>
+                <div class="mission-ship-pool">
+                    @foreach (var ship in Combat.ShipPool)
+                    {
+                        <div class="mission-combat-chip muted" @key="ship">@ship</div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public OverlaySearchApp.MissionCombatVm? Combat { get; set; }
+}

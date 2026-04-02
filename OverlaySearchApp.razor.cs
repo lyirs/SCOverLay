@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Components;
+﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 using System;
@@ -18,11 +18,21 @@ namespace StarCitizenOverLay
         [Inject]
         private OverlayShellState ShellState { get; set; } = default!;
 
+        private SearchMode _searchMode = SearchMode.Items;
+        private string _itemQuery = "P8";
+        private string _missionQuery = string.Empty;
         private string _query = "P8";
         private bool _isSearching;
-        private bool _hasSearched;
+        private bool _hasItemSearched;
+        private bool _hasMissionSearched;
+        private bool _showSidebarTitlePanel = true;
+        private bool _showSidebarStatusPanel = true;
+        private bool _showSidebarLogPanel = true;
+        private bool _showMainTerminalPanel = true;
         private readonly List<OverlaySearchItem> _results = [];
+        private readonly List<OverlayMissionSearchItem> _missionResults = [];
         private OverlaySearchItem? _selectedItem;
+        private string? _selectedMissionSearchResultId;
 
         private string _detailTitle = "物品搜索终端";
         private string _detailSubtitle = "输入关键词开始搜索。";
@@ -39,13 +49,13 @@ namespace StarCitizenOverLay
         private readonly List<BlueprintModifierSlotVm> _blueprintModifierSlots = [];
         private readonly List<MissionSourceVm> _missionSources = [];
         private readonly List<MaterialPreviewWindowVm> _materialPreviewWindows = [];
+        private bool _hasSearched => _hasItemSearched;
 
         private string _missionDetailTitle = string.Empty;
         private string _missionDetailSubtitle = string.Empty;
-        private string _missionDetailDescription = string.Empty;
         private string _missionDetailStatus = string.Empty;
-        private MissionDetailPanelVm? _missionDetailPanel;
-        private readonly List<MissionRowVm> _missionDetailRows = [];
+        private MissionDetailTabsVm? _missionDetailPanel;
+        private MissionTabKey _activeMissionTab = MissionTabKey.Overview;
         private string? _selectedMissionSourceId;
         private int _nextMaterialPreviewOffset;
         private readonly FloatingWindowState _mainTerminalWindow = new(394, 0, 836, 12);
@@ -120,6 +130,42 @@ namespace StarCitizenOverLay
             return ShellState.RequestExitAsync();
         }
 
+        private bool IsItemSearchMode() => _searchMode == SearchMode.Items;
+
+        private bool IsMissionSearchMode() => _searchMode == SearchMode.Missions;
+
+        private void SetSearchMode(SearchMode mode)
+        {
+            if (_searchMode == mode)
+            {
+                return;
+            }
+
+            _searchMode = mode;
+            _detailStatus = string.Empty;
+
+            if (mode == SearchMode.Missions)
+            {
+                _missionQuery = string.Empty;
+                _query = string.Empty;
+                _hasMissionSearched = false;
+                _missionResults.Clear();
+                _selectedMissionSearchResultId = null;
+                ClearMissionDetail();
+                return;
+            }
+
+            _query = _itemQuery;
+            _selectedMissionSearchResultId = null;
+            ClearMissionDetail();
+        }
+
+        private bool HasVisibleSidebarPanels()
+            => _showSidebarTitlePanel || _showSidebarStatusPanel || _showSidebarLogPanel;
+
+        private static string? BuildDefaultPanelStyle(bool visible)
+            => visible ? null : "display:none;";
+
         private async Task SearchAsync()
         {
             if (_isSearching)
@@ -127,9 +173,16 @@ namespace StarCitizenOverLay
                 return;
             }
 
-            _hasSearched = true;
-            var query = _query.Trim();
-            if (string.IsNullOrWhiteSpace(query))
+            if (IsMissionSearchMode())
+            {
+                await SearchMissionsAsync();
+                return;
+            }
+
+            _hasItemSearched = true;
+            _itemQuery = _query.Trim();
+            var query = _itemQuery;
+            if (string.IsNullOrWhiteSpace(_itemQuery))
             {
                 _results.Clear();
                 ResetDetail();
@@ -142,7 +195,7 @@ namespace StarCitizenOverLay
 
             try
             {
-                var response = await ApiService.SearchAsync(query);
+                var response = await ApiService.SearchAsync(_itemQuery);
                 _results.AddRange(response.Results
                     .OrderBy(item => item.CategoryPriority)
                     .ThenByDescending(item => item.Score)
@@ -151,7 +204,7 @@ namespace StarCitizenOverLay
                 if (_results.Count == 0)
                 {
                     _detailTitle = "没有找到结果";
-                    _detailSubtitle = $"没有匹配“{query}”的物品。";
+                    _detailSubtitle = $"没有匹配 “{query}” 的物品。";
                     return;
                 }
 
@@ -161,6 +214,39 @@ namespace StarCitizenOverLay
             {
                 _detailTitle = "搜索失败";
                 _detailSubtitle = ex.Message;
+                _detailStatus = ex.Message;
+            }
+            finally
+            {
+                _isSearching = false;
+            }
+        }
+
+        private async Task SearchMissionsAsync()
+        {
+            _hasMissionSearched = true;
+            _missionQuery = _query.Trim();
+            _missionResults.Clear();
+            _selectedMissionSearchResultId = null;
+            ClearMissionDetail();
+            _detailStatus = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(_missionQuery))
+            {
+                return;
+            }
+
+            _isSearching = true;
+
+            try
+            {
+                var response = await ApiService.SearchMissionsAsync(_missionQuery);
+                _missionResults.AddRange(response.Results
+                    .OrderByDescending(item => item.Score)
+                    .ThenBy(item => GetMissionSearchPrimaryName(item), StringComparer.CurrentCultureIgnoreCase));
+            }
+            catch (Exception ex)
+            {
                 _detailStatus = ex.Message;
             }
             finally
@@ -277,6 +363,17 @@ namespace StarCitizenOverLay
             {
                 await SearchAsync();
             }
+        }
+
+        private async Task OpenMissionSearchResultAsync(OverlayMissionSearchItem item)
+        {
+            if (string.IsNullOrWhiteSpace(item.Id))
+            {
+                return;
+            }
+
+            _selectedMissionSearchResultId = item.Id;
+            await OpenMissionDetailWindowAsync(BuildMissionSearchSource(item));
         }
 
         private async Task SelectItemAsync(OverlaySearchItem item)
@@ -403,10 +500,9 @@ namespace StarCitizenOverLay
             _selectedMissionSourceId = mission.Id;
             _missionDetailTitle = mission.Title;
             _missionDetailSubtitle = mission.SecondaryText ?? string.Empty;
-            _missionDetailDescription = string.Empty;
             _missionDetailStatus = "正在加载任务详情...";
             _missionDetailPanel = null;
-            _missionDetailRows.Clear();
+            _activeMissionTab = MissionTabKey.Overview;
 
             try
             {
@@ -418,12 +514,10 @@ namespace StarCitizenOverLay
 
                 _missionDetailTitle = FirstNonEmpty(detail.NameChs, detail.Name, mission.Title);
                 _missionDetailSubtitle = BuildMissionSubtitle(detail);
-                _missionDetailDescription = FirstNonEmpty(detail.DescriptionChs, detail.Description);
                 _missionDetailStatus = string.Empty;
 
-                _missionDetailPanel = BuildMissionDetailPanel(detail);
-                _missionDetailRows.Clear();
-                _missionDetailRows.AddRange(BuildMissionRows(detail));
+                _missionDetailPanel = BuildMissionDetailTabs(detail);
+                _activeMissionTab = MissionTabKey.Overview;
             }
             catch (Exception ex)
             {
@@ -434,7 +528,6 @@ namespace StarCitizenOverLay
 
                 _missionDetailStatus = $"任务详情加载失败：{ex.Message}";
                 _missionDetailPanel = null;
-                _missionDetailRows.Clear();
             }
         }
 
@@ -442,6 +535,11 @@ namespace StarCitizenOverLay
         {
             BringFloatingWindowToFront(_missionDetailWindow);
             await LoadMissionDetailAsync(mission);
+        }
+
+        private void SetMissionActiveTab(MissionTabKey tabKey)
+        {
+            _activeMissionTab = tabKey;
         }
 
         private void BeginMainTerminalDrag(Microsoft.AspNetCore.Components.Web.MouseEventArgs args)
@@ -559,10 +657,9 @@ namespace StarCitizenOverLay
             _selectedMissionSourceId = null;
             _missionDetailTitle = string.Empty;
             _missionDetailSubtitle = string.Empty;
-            _missionDetailDescription = string.Empty;
             _missionDetailStatus = string.Empty;
             _missionDetailPanel = null;
-            _missionDetailRows.Clear();
+            _activeMissionTab = MissionTabKey.Overview;
             _missionRequestVersion++;
 
             if (_draggingWindowKey == "mission")
@@ -717,7 +814,7 @@ namespace StarCitizenOverLay
                 parts.Add($"{FormatNumber(scu)} SCU");
             }
 
-            return new BlueprintMaterialVm($"material:{index}:{name}", string.Join(" · ", parts));
+            return new BlueprintMaterialVm($"material:{index}:{name}", string.Join(" / ", parts));
         }
 
         private static BlueprintBaseStatSourceVm? BuildBlueprintBaseStatSource(JsonElement stat, int index)
@@ -798,7 +895,7 @@ namespace StarCitizenOverLay
                 title,
                 requiredCount,
                 minQuality,
-                minQuality,
+                Math.Clamp(Math.Max(minQuality, 500), minQuality, 1000),
                 modifierRows);
         }
 
@@ -833,7 +930,7 @@ namespace StarCitizenOverLay
                 $"mission-source:{index}:{missionId}",
                 missionId,
                 missionName,
-                secondaryParts.Count == 0 ? null : string.Join(" · ", secondaryParts));
+                secondaryParts.Count == 0 ? null : string.Join(" / ", secondaryParts));
         }
 
         private void AddPriceRows(string sideKey, IEnumerable<OverlayPriceEntry> entries)
@@ -853,6 +950,196 @@ namespace StarCitizenOverLay
         private static string GetPrimaryName(OverlaySearchItem item)
             => string.IsNullOrWhiteSpace(item.NameChs) ? item.Name : item.NameChs!;
 
+        private static string GetMissionSearchPrimaryName(OverlayMissionSearchItem item)
+            => FirstNonEmpty(item.NameChs, item.Name, "未命名任务");
+
+        private static MissionSourceVm BuildMissionSearchSource(OverlayMissionSearchItem item)
+            => new(
+                $"mission-search:{item.Id}",
+                item.Id,
+                GetMissionSearchPrimaryName(item),
+                BuildMissionSearchSourceSubtitle(item));
+
+        private static string GetMissionSearchSecondaryName(OverlayMissionSearchItem item)
+        {
+            if (!string.IsNullOrWhiteSpace(item.Name) &&
+                !string.Equals(item.Name, item.NameChs, StringComparison.OrdinalIgnoreCase))
+            {
+                return item.Name!;
+            }
+
+            return BuildMissionSearchSourceSubtitle(item);
+        }
+
+        private static string GetMissionSearchBadgeText(OverlayMissionSearchItem item)
+        {
+            var englishName = FirstNonEmpty(item.Name, item.MissionType, item.MissionTypeChs);
+            if (!string.IsNullOrWhiteSpace(englishName))
+            {
+                var letters = new string(englishName.Where(char.IsLetterOrDigit).Take(2).ToArray()).ToUpperInvariant();
+                if (letters.Length >= 2)
+                {
+                    return letters[..2];
+                }
+
+                if (letters.Length == 1)
+                {
+                    return $"{letters}{letters}";
+                }
+            }
+
+            var primaryName = GetMissionSearchPrimaryName(item).Replace(" ", string.Empty, StringComparison.Ordinal);
+            if (primaryName.Length >= 2)
+            {
+                return primaryName[..2];
+            }
+
+            if (primaryName.Length == 1)
+            {
+                return $"{primaryName}{primaryName}";
+            }
+
+            return "MI";
+        }
+
+        private static string BuildMissionSearchSourceSubtitle(OverlayMissionSearchItem item)
+        {
+            var parts = new List<string>();
+
+            var missionType = FirstNonEmpty(item.MissionTypeChs, item.MissionType);
+            if (!string.IsNullOrWhiteSpace(missionType))
+            {
+                parts.Add(missionType);
+            }
+
+            var category = FirstNonEmpty(item.CategoryChs, item.Category);
+            if (!string.IsNullOrWhiteSpace(category))
+            {
+                parts.Add(category);
+            }
+
+            var systems = (item.Systems ?? [])
+                .Where(system => !string.IsNullOrWhiteSpace(system))
+                .ToArray();
+            if (systems.Length > 0)
+            {
+                parts.Add(string.Join(" / ", systems));
+            }
+
+            if (item.RewardUec is > 0)
+            {
+                parts.Add($"{item.RewardUec:N0} aUEC");
+            }
+
+            return string.Join(" / ", parts);
+        }
+
+        #if false
+        private static IEnumerable<ResultTagVm> BuildMissionSearchCardTags(OverlayMissionSearchItem item)
+        {
+            var tags = new List<ResultTagVm>();
+
+            var systemName = item.Systems?.FirstOrDefault(system => !string.IsNullOrWhiteSpace(system));
+            if (!string.IsNullOrWhiteSpace(systemName))
+            {
+                tags.Add(new ResultTagVm(systemName, BuildTagStyle("#5A4B18", "#D1A83A", "#FFEDAE")));
+            }
+
+            var category = FirstNonEmpty(item.CategoryChs, item.Category);
+            if (!string.IsNullOrWhiteSpace(category))
+            {
+                tags.Add(new ResultTagVm(category, BuildTagStyle("#33255C", "#8261D6", "#E9DEFF")));
+            }
+
+            if (item.Flags is not null)
+            {
+                tags.Add(item.Flags.Illegal
+                    ? new ResultTagVm("非法", BuildTagStyle("#5E2926", "#C95D4E", "#FFD5CF"))
+                    : new ResultTagVm("合法", BuildTagStyle("#1D4B3D", "#379C74", "#D1FFE8")));
+
+                if (item.Flags.CanBeShared)
+                {
+                    tags.Add(new ResultTagVm("可共享", BuildTagStyle("#173949", "#2E879F", "#B7F4FF")));
+                }
+            }
+
+            return tags
+                .Where(tag => !string.IsNullOrWhiteSpace(tag.Text))
+                .GroupBy(tag => tag.Text, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .Take(4);
+        }
+        #endif
+
+        private static string GetMissionSearchRewardText(OverlayMissionSearchItem item)
+            => item.RewardUec is > 0 ? $"{item.RewardUec:N0} aUEC" : "--";
+
+        private static string GetMissionSearchTypeText(OverlayMissionSearchItem item)
+            => FirstNonEmpty(item.MissionTypeChs, item.MissionType, item.CategoryChs, item.Category, "--");
+
+        private static string GetMissionSearchVersionText(OverlayMissionSearchItem item)
+        {
+            var version = BuildMissionVersionTag(item.GameVersion);
+            return string.IsNullOrWhiteSpace(version) ? "--" : version;
+        }
+
+        private IReadOnlyList<MissionSearchCardVm> BuildMissionSearchCards()
+            => _missionResults
+                .Select(item => new MissionSearchCardVm(
+                    item.Id,
+                    GetMissionSearchBadgeText(item),
+                    GetMissionSearchPrimaryName(item),
+                    GetMissionSearchSecondaryName(item),
+                    BuildMissionSearchBoardTags(item)
+                        .Select(tag => new MissionSearchCardTagVm(tag.Text, tag.Style))
+                        .ToList(),
+                    GetMissionSearchRewardText(item),
+                    GetMissionSearchTypeText(item),
+                    GetMissionSearchVersionText(item)))
+                .ToList();
+
+        private Task OpenMissionSearchCardAsync(string missionId)
+        {
+            var item = _missionResults.FirstOrDefault(result =>
+                string.Equals(result.Id, missionId, StringComparison.Ordinal));
+            return item is null ? Task.CompletedTask : OpenMissionSearchResultAsync(item);
+        }
+
+        private static IEnumerable<ResultTagVm> BuildMissionSearchBoardTags(OverlayMissionSearchItem item)
+        {
+            var tags = new List<ResultTagVm>();
+
+            var systemName = item.Systems?.FirstOrDefault(system => !string.IsNullOrWhiteSpace(system));
+            if (!string.IsNullOrWhiteSpace(systemName))
+            {
+                tags.Add(new ResultTagVm(systemName, BuildTagStyle("#5A4B18", "#D1A83A", "#FFEDAE")));
+            }
+
+            var category = FirstNonEmpty(item.CategoryChs, item.Category);
+            if (!string.IsNullOrWhiteSpace(category))
+            {
+                tags.Add(new ResultTagVm(category, BuildTagStyle("#33255C", "#8261D6", "#E9DEFF")));
+            }
+
+            if (item.Flags is not null)
+            {
+                tags.Add(item.Flags.Illegal
+                    ? new ResultTagVm("非法", BuildTagStyle("#5E2926", "#C95D4E", "#FFD5CF"))
+                    : new ResultTagVm("合法", BuildTagStyle("#1D4B3D", "#379C74", "#D1FFE8")));
+
+                if (item.Flags.CanBeShared)
+                {
+                    tags.Add(new ResultTagVm("可共享", BuildTagStyle("#173949", "#2E879F", "#B7F4FF")));
+                }
+            }
+
+            return tags
+                .Where(tag => !string.IsNullOrWhiteSpace(tag.Text))
+                .GroupBy(tag => tag.Text, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .Take(4);
+        }
+
         private static string BuildItemSubtitle(OverlaySearchItem item)
         {
             if (!string.IsNullOrWhiteSpace(item.Name) &&
@@ -862,6 +1149,42 @@ namespace StarCitizenOverLay
             }
 
             return "点击结果查看详情。";
+        }
+
+        private static string BuildMissionSearchSubtitle(OverlayMissionSearchItem item)
+        {
+            var parts = new List<string>();
+            var missionType = FirstNonEmpty(item.MissionTypeChs, item.MissionType);
+            var category = FirstNonEmpty(item.CategoryChs, item.Category);
+
+            if (!string.IsNullOrWhiteSpace(missionType))
+            {
+                parts.Add(missionType);
+            }
+
+            if (!string.IsNullOrWhiteSpace(category))
+            {
+                parts.Add(category);
+            }
+
+            if ((item.Systems?.Count ?? 0) > 0)
+            {
+                var systems = (item.Systems ?? [])
+                    .Where(system => !string.IsNullOrWhiteSpace(system))
+                    .ToArray();
+
+                if (systems.Length > 0)
+                {
+                    parts.Add(string.Join(" / ", systems));
+                }
+            }
+
+            if (item.RewardUec is > 0)
+            {
+                parts.Add($"{item.RewardUec:N0} aUEC");
+            }
+
+            return string.Join(" / ", parts);
         }
 
         private static string BuildDetailSubtitle(OverlayItemDetailResponse detail, OverlaySearchItem item)
@@ -918,6 +1241,36 @@ namespace StarCitizenOverLay
             else if (!string.IsNullOrWhiteSpace(item.Type))
             {
                 tags.Add(new ResultTagVm(item.Type!, BuildTagStyle("#4B3719", "#A7792E", "#FFE2B2")));
+            }
+
+            return tags
+                .Where(tag => !string.IsNullOrWhiteSpace(tag.Text))
+                .GroupBy(tag => tag.Text, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .Take(2);
+        }
+
+        private static IEnumerable<ResultTagVm> BuildMissionResultTags(OverlayMissionSearchItem item)
+        {
+            var tags = new List<ResultTagVm>();
+
+            var missionType = FirstNonEmpty(item.MissionTypeChs, item.MissionType);
+            if (!string.IsNullOrWhiteSpace(missionType))
+            {
+                tags.Add(new ResultTagVm(missionType, BuildTagStyle("#173949", "#2E879F", "#B7F4FF")));
+            }
+
+            if (item.RewardUec is > 0)
+            {
+                tags.Add(new ResultTagVm($"{item.RewardUec:N0}", BuildTagStyle("#5A4B18", "#D1A83A", "#FFEDAE")));
+            }
+            else
+            {
+                var systemName = item.Systems?.FirstOrDefault();
+                if (!string.IsNullOrWhiteSpace(systemName))
+                {
+                    tags.Add(new ResultTagVm(systemName, BuildTagStyle("#33255C", "#8261D6", "#E9DEFF")));
+                }
             }
 
             return tags
@@ -1018,23 +1371,27 @@ namespace StarCitizenOverLay
             return string.Join(" - ", parts);
         }
 
-        private static MissionDetailPanelVm BuildMissionDetailPanel(OverlayMissionDetailResponse detail)
+        private static MissionDetailTabsVm BuildMissionDetailTabs(OverlayMissionDetailResponse detail)
         {
             var englishName = !string.IsNullOrWhiteSpace(detail.Name) &&
                               !string.Equals(detail.Name, detail.NameChs, StringComparison.CurrentCultureIgnoreCase)
                 ? detail.Name
                 : null;
 
-            return new MissionDetailPanelVm(
+            return new MissionDetailTabsVm(
                 englishName,
-                FirstNonEmpty(detail.DescriptionChs, detail.Description),
                 BuildMissionVersionTag(detail.GameVersion),
                 BuildMissionHeaderTags(detail),
-                BuildMissionStatCards(detail),
-                BuildMissionRequirementLines(detail),
-                BuildMissionRequirementTags(detail),
-                BuildMissionRewardSections(detail),
-                BuildMissionRequirementSections(detail),
+                new MissionOverviewTabVm(
+                    FirstNonEmpty(detail.DescriptionChs, detail.Description),
+                    BuildMissionStatCards(detail),
+                    BuildMissionRewardSections(detail)),
+                new MissionRequirementsTabVm(
+                    BuildMissionRequirementLines(detail),
+                    BuildMissionRequirementTags(detail),
+                    BuildMissionRequirementSections(detail)),
+                BuildMissionCalculatorTab(detail),
+                BuildMissionCombatTab(detail),
                 BuildMissionExtraSections(detail));
         }
 
@@ -1130,11 +1487,20 @@ namespace StarCitizenOverLay
             if (detail.Flags is not null)
             {
                 tags.Add(detail.Flags.CanBeShared
-                    ? new MissionTagVm("可共享: 是", "mission-tag-legal")
-                    : new MissionTagVm("可共享: 否", "mission-tag-illegal"));
+                    ? new MissionTagVm("可共享：是", "mission-tag-legal")
+                    : new MissionTagVm("可共享：否", "mission-tag-illegal"));
                 tags.Add(detail.Flags.Illegal
-                    ? new MissionTagVm("非法: 是", "mission-tag-illegal")
-                    : new MissionTagVm("非法: 否", "mission-tag-legal"));
+                    ? new MissionTagVm("非法：是", "mission-tag-illegal")
+                    : new MissionTagVm("非法：否", "mission-tag-legal"));
+            }
+
+            var timeField = FindMissionField(detail, candidate =>
+                candidate.Label.Contains("时限", StringComparison.CurrentCultureIgnoreCase) ||
+                candidate.Key.Contains("time", StringComparison.OrdinalIgnoreCase));
+            var timeText = timeField is null ? null : FormatDetailFieldValue(timeField);
+            if (!string.IsNullOrWhiteSpace(timeText))
+            {
+                tags.Add(new MissionTagVm($"完成时限：{timeText}", "mission-tag-neutral"));
             }
 
             return tags;
@@ -1183,6 +1549,218 @@ namespace StarCitizenOverLay
 
             return sections;
         }
+
+        private static MissionCalculatorTabVm BuildMissionCalculatorTab(OverlayMissionDetailResponse detail)
+        {
+            var metaLines = new List<MissionInfoLineVm>();
+            var rows = new List<MissionReputationRowVm>();
+
+            if (detail.Extras?.Reputation is not { } reputation ||
+                reputation.ValueKind != JsonValueKind.Object)
+            {
+                return new MissionCalculatorTabVm(metaLines, rows);
+            }
+
+            var faction = FirstJsonString(reputation, "factionName");
+            if (!string.IsNullOrWhiteSpace(faction))
+            {
+                metaLines.Add(new MissionInfoLineVm("mission-calc-faction", "阵营", faction));
+            }
+
+            var scope = FirstJsonString(reputation, "scopeName");
+            if (!string.IsNullOrWhiteSpace(scope))
+            {
+                metaLines.Add(new MissionInfoLineVm("mission-calc-scope", "声望范围", scope));
+            }
+
+            if (TryGetDecimal(reputation, "repPerMission", out var repPerMission) && repPerMission > 0)
+            {
+                metaLines.Add(new MissionInfoLineVm("mission-calc-rep", "单次声望", FormatNumber(repPerMission)));
+            }
+
+            if (reputation.TryGetProperty("rows", out var reputationRows) &&
+                reputationRows.ValueKind == JsonValueKind.Array)
+            {
+                var index = 0;
+                foreach (var row in reputationRows.EnumerateArray())
+                {
+                    var rankName = FirstJsonString(row, "rankName");
+                    if (string.IsNullOrWhiteSpace(rankName))
+                    {
+                        continue;
+                    }
+
+                    var xpText = FirstNonEmpty(FirstJsonString(row, "xpText"), FirstJsonValue(row, "xpValue"), "—");
+                    var missionsText = FirstNonEmpty(FirstJsonString(row, "missionsText"), FirstJsonValue(row, "missionsValue"), "—");
+
+                    rows.Add(new MissionReputationRowVm(
+                        $"mission-rep:{index++}:{rankName}",
+                        rankName,
+                        xpText,
+                        missionsText,
+                        TryGetBoolean(row, "isMin", out var isMin) && isMin,
+                        TryGetBoolean(row, "isMax", out var isMax) && isMax,
+                        TryGetBoolean(row, "isCurrent", out var isCurrent) && isCurrent));
+                }
+            }
+
+            return new MissionCalculatorTabVm(metaLines, rows);
+        }
+
+        private static MissionCombatVm? BuildMissionCombatTab(OverlayMissionDetailResponse detail)
+        {
+            if (detail.Extras?.Combat is not { } combat ||
+                combat.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            var hostileRange = BuildMissionCombatRangeText(combat, "hostileTotal", "hostileMin", "hostileMax");
+            var friendlyRange = BuildMissionCombatRangeText(combat, null, "friendlyMin", "friendlyMax");
+
+            var hostileSummary = string.IsNullOrWhiteSpace(hostileRange)
+                ? null
+                : $"{hostileRange} 敌对目标";
+            var friendlySummary = string.IsNullOrWhiteSpace(friendlyRange)
+                ? null
+                : $"{friendlyRange} 友军";
+
+            var groups = new List<MissionCombatGroupVm>();
+            if (combat.TryGetProperty("groups", out var groupsElement) &&
+                groupsElement.ValueKind == JsonValueKind.Array)
+            {
+                var groupIndex = 0;
+                foreach (var group in groupsElement.EnumerateArray())
+                {
+                    var role = FirstJsonString(group, "role");
+                    var title = TranslateMissionCombatRole(role);
+                    if (string.IsNullOrWhiteSpace(title))
+                    {
+                        title = $"分组 {groupIndex + 1}";
+                    }
+
+                    var countText = BuildMissionCombatItemRangeText(group, "min", "max");
+                    if (!string.IsNullOrWhiteSpace(countText))
+                    {
+                        countText = $"{countText} 艘";
+                    }
+                    else
+                    {
+                        countText = "未知";
+                    }
+
+                    string? chanceText = null;
+                    if (TryGetDecimal(group, "spawnChance", out var spawnChance) && spawnChance > 0)
+                    {
+                        var chancePercent = spawnChance <= 1 ? spawnChance * 100 : spawnChance;
+                        chanceText = $"{FormatNumber(chancePercent)}% 刷新概率";
+                    }
+
+                    var waves = new List<MissionCombatWaveVm>();
+                    if (group.TryGetProperty("waves", out var wavesElement) &&
+                        wavesElement.ValueKind == JsonValueKind.Array)
+                    {
+                        var waveIndex = 0;
+                        foreach (var wave in wavesElement.EnumerateArray())
+                        {
+                            var waveName = BuildMissionCombatWaveLabel(wave, waveIndex++);
+                            if (!string.IsNullOrWhiteSpace(waveName))
+                            {
+                                waves.Add(new MissionCombatWaveVm(
+                                    $"mission-wave:{groupIndex}:{waveIndex}:{waveName}",
+                                    waveName));
+                            }
+                        }
+                    }
+
+                    groups.Add(new MissionCombatGroupVm(
+                        $"mission-group:{groupIndex++}:{title}",
+                        title,
+                        countText,
+                        chanceText,
+                        IsFriendlyMissionCombatRole(role),
+                        waves));
+                }
+            }
+
+            var shipPool = new List<string>();
+            if (combat.TryGetProperty("shipPool", out var shipPoolElement) &&
+                shipPoolElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var ship in shipPoolElement.EnumerateArray().Take(120))
+                {
+                    var shipName = FirstJsonString(ship, "nameChs", "name");
+                    if (string.IsNullOrWhiteSpace(shipName) && ship.ValueKind == JsonValueKind.String)
+                    {
+                        shipName = ship.GetString();
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(shipName))
+                    {
+                        shipPool.Add(shipName);
+                    }
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(hostileSummary) &&
+                string.IsNullOrWhiteSpace(friendlySummary) &&
+                groups.Count == 0 &&
+                shipPool.Count == 0)
+            {
+                return null;
+            }
+
+            return new MissionCombatVm(
+                hostileSummary,
+                friendlySummary,
+                groups,
+                shipPool);
+        }
+
+        private static string BuildMissionCombatWaveLabel(JsonElement wave, int index)
+        {
+            var waveName = FirstJsonString(wave, "name");
+            if (string.IsNullOrWhiteSpace(waveName))
+            {
+                waveName = $"波次 {index + 1}";
+            }
+
+            var countText = BuildMissionCombatItemRangeText(wave, "min", "max");
+            if (string.IsNullOrWhiteSpace(countText))
+            {
+                countText = BuildMissionCombatItemRangeText(wave, "minShips", "maxShips");
+            }
+
+            var translated = TranslateMissionCombatWaveName(waveName);
+            return string.IsNullOrWhiteSpace(countText)
+                ? translated
+                : $"{translated}: {countText} 艘";
+        }
+
+        private static string TranslateMissionCombatWaveName(string? waveName)
+        {
+            if (string.IsNullOrWhiteSpace(waveName))
+            {
+                return "波次";
+            }
+
+            return waveName switch
+            {
+                "DefendLocationWrapperEnemyShips" => "防御点敌方舰船",
+                "InitialEnemies" => "初始敌人",
+                "InterdictionShips_BP" => "拦截舰船",
+                "Security Ships" => "安保舰船",
+                "SalvageableShip" => "打捞目标",
+                _ => waveName
+            };
+        }
+
+        private static bool IsFriendlyMissionCombatRole(string? role)
+            => string.Equals(role, "EscortShip", StringComparison.OrdinalIgnoreCase)
+               || (!string.IsNullOrWhiteSpace(role) &&
+                   (role.Contains("friendly", StringComparison.OrdinalIgnoreCase)
+                    || role.Contains("allied", StringComparison.OrdinalIgnoreCase)
+                    || role.Contains("ally", StringComparison.OrdinalIgnoreCase)));
 
         private static List<MissionSectionVm> BuildMissionExtraSections(OverlayMissionDetailResponse detail)
         {
@@ -1352,12 +1930,12 @@ namespace StarCitizenOverLay
             {
                 if (TryGetInt(summary, "poolItemCount", out var poolItemCount) && poolItemCount > 0)
                 {
-                    summaryParts.Add($"共 {poolItemCount} 项");
+                    summaryParts.Add($"池内 {poolItemCount} 项");
                 }
 
                 if (TryGetDecimal(summary, "poolChancePercent", out var poolChancePercent) && poolChancePercent > 0)
                 {
-                    summaryParts.Add($"触发 {FormatNumber(poolChancePercent)}%");
+                    summaryParts.Add($"瑙﹀彂 {FormatNumber(poolChancePercent)}%");
                 }
             }
 
@@ -1393,7 +1971,7 @@ namespace StarCitizenOverLay
                 "蓝图奖励",
                 MissionSectionKind.List,
                 items,
-                summaryParts.Count == 0 ? null : string.Join(" · ", summaryParts));
+                summaryParts.Count == 0 ? null : string.Join(" / ", summaryParts));
             return true;
         }
 
@@ -1463,7 +2041,7 @@ namespace StarCitizenOverLay
                         items.Add(new MissionSectionItemVm(
                             $"mission-reputation-row:{index++}",
                             rankName,
-                            parts.Count == 0 ? null : string.Join(" · ", parts)));
+                            parts.Count == 0 ? null : string.Join(" / ", parts)));
                     }
                 }
             }
@@ -1532,7 +2110,7 @@ namespace StarCitizenOverLay
                     groupItems.Add(new MissionSectionItemVm(
                         $"mission-combat-group:{index++}",
                         roleName,
-                        parts.Count == 0 ? null : string.Join(" · ", parts)));
+                        parts.Count == 0 ? null : string.Join(" / ", parts)));
                 }
 
                 if (groupItems.Count > 0)
@@ -1602,7 +2180,7 @@ namespace StarCitizenOverLay
                 return false;
             }
 
-            section = new MissionSectionVm("mission-penalties", "失败惩罚", MissionSectionKind.List, items);
+            section = new MissionSectionVm("mission-penalties", "澶辫触鎯╃綒", MissionSectionKind.List, items);
             return true;
         }
 
@@ -1697,8 +2275,8 @@ namespace StarCitizenOverLay
             if (detail.Flags is not null)
             {
                 tags.Add(detail.Flags.Illegal
-                    ? new MissionTagVm("非法", "mission-tag-illegal")
-                    : new MissionTagVm("合法", "mission-tag-legal"));
+                    ? new MissionTagVm("闈炴硶", "mission-tag-illegal")
+                    : new MissionTagVm("鍚堟硶", "mission-tag-legal"));
             }
 
             var category = FirstNonEmpty(detail.CategoryChs, detail.Category);
@@ -1716,11 +2294,11 @@ namespace StarCitizenOverLay
 
             var rewardField = FindMissionField(detail, field =>
                 string.Equals(field.Key, "rewardUec", StringComparison.OrdinalIgnoreCase) ||
-                field.Label.Contains("奖励", StringComparison.CurrentCultureIgnoreCase));
+                field.Label.Contains("濂栧姳", StringComparison.CurrentCultureIgnoreCase));
             var rewardText = rewardField is null ? null : FormatDetailFieldValue(rewardField);
             if (!string.IsNullOrWhiteSpace(rewardText))
             {
-                cards.Add(new MissionStatCardVm("奖励金额", rewardText, "mission-stat-gold"));
+                cards.Add(new MissionStatCardVm("濂栧姳閲戦", rewardText, "mission-stat-gold"));
             }
 
             if (detail.Extras?.ScripAmount is decimal scripAmount && scripAmount > 0)
@@ -1733,7 +2311,7 @@ namespace StarCitizenOverLay
                 TryGetDecimal(reputation, "repPerMission", out var repPerMission) &&
                 repPerMission > 0)
             {
-                cards.Add(new MissionStatCardVm("任务经验", $"+{FormatNumber(repPerMission)} 声望", "mission-stat-green"));
+                cards.Add(new MissionStatCardVm("浠诲姟缁忛獙", $"+{FormatNumber(repPerMission)} 澹版湜", "mission-stat-green"));
             }
 
             return cards;
@@ -1743,14 +2321,14 @@ namespace StarCitizenOverLay
         {
             var lines = new List<MissionInfoLineVm>();
 
-            AddMissionRequirementField(lines, detail, "最低声望", "最低", "minStanding");
-            AddMissionRequirementField(lines, detail, "最高声望", "最高", "maxStanding");
-            AddMissionRequirementField(lines, detail, "完成时限", "时限", "time");
-            AddMissionRequirementField(lines, detail, "时限", "完成时间", "timeToComplete");
+            AddMissionRequirementField(lines, detail, "鏈€浣庡０鏈?, "鏈€浣?, "minStanding");
+            AddMissionRequirementField(lines, detail, "鏈€楂樺０鏈?, "鏈€楂?, "maxStanding");
+            AddMissionRequirementField(lines, detail, "瀹屾垚鏃堕檺", "鏃堕檺", "time");
+            AddMissionRequirementField(lines, detail, "鏃堕檺", "瀹屾垚鏃堕棿", "timeToComplete");
 
             if ((detail.Extras?.Systems?.Count ?? 0) > 0)
             {
-                lines.Add(new MissionInfoLineVm("mission-systems", "星系", string.Join(" / ", detail.Extras!.Systems!)));
+                lines.Add(new MissionInfoLineVm("mission-systems", "鏄熺郴", string.Join(" / ", detail.Extras!.Systems!)));
             }
 
             return lines;
@@ -1777,11 +2355,11 @@ namespace StarCitizenOverLay
             if (detail.Flags is not null)
             {
                 tags.Add(detail.Flags.CanBeShared
-                    ? new MissionTagVm("可共享: 是", "mission-tag-legal")
-                    : new MissionTagVm("可共享: 否", "mission-tag-illegal"));
+                    ? new MissionTagVm("鍙叡浜? 鏄?, "mission-tag-legal")
+                    : new MissionTagVm("鍙叡浜? 鍚?, "mission-tag-illegal"));
                 tags.Add(detail.Flags.Illegal
-                    ? new MissionTagVm("非法: 是", "mission-tag-illegal")
-                    : new MissionTagVm("非法: 否", "mission-tag-legal"));
+                    ? new MissionTagVm("闈炴硶: 鏄?, "mission-tag-illegal")
+                    : new MissionTagVm("闈炴硶: 鍚?, "mission-tag-legal"));
             }
 
             if (!string.IsNullOrWhiteSpace(detail.SourceType))
@@ -1797,7 +2375,7 @@ namespace StarCitizenOverLay
             var sections = new List<MissionSectionVm>();
 
             if (detail.Extras?.ReceiveItems is { } receiveItems &&
-                TryBuildMissionItemSection(receiveItems, "你将获得", "mission-reward-items", out var receiveSection))
+                TryBuildMissionItemSection(receiveItems, "浣犲皢鑾峰緱", "mission-reward-items", out var receiveSection))
             {
                 sections.Add(receiveSection);
             }
@@ -1816,19 +2394,19 @@ namespace StarCitizenOverLay
             var sections = new List<MissionSectionVm>();
 
             if (detail.Extras?.RequiredItems is { } requiredItems &&
-                TryBuildMissionItemSection(requiredItems, "所需物品", "mission-required-items", out var requiredSection))
+                TryBuildMissionItemSection(requiredItems, "鎵€闇€鐗╁搧", "mission-required-items", out var requiredSection))
             {
                 sections.Add(requiredSection);
             }
 
             if (detail.Extras?.RequiredIntros is { } requiredIntros &&
-                TryBuildMissionNameSection(requiredIntros, "前置引导任务", "mission-required-intros", out var introSection))
+                TryBuildMissionNameSection(requiredIntros, "鍓嶇疆寮曞浠诲姟", "mission-required-intros", out var introSection))
             {
                 sections.Add(introSection);
             }
 
             if (detail.Extras?.UnlockMissions is { } unlockMissions &&
-                TryBuildMissionNameSection(unlockMissions, "解锁后续任务", "mission-unlock-missions", out var unlockSection))
+                TryBuildMissionNameSection(unlockMissions, "瑙ｉ攣鍚庣画浠诲姟", "mission-unlock-missions", out var unlockSection))
             {
                 sections.Add(unlockSection);
             }
@@ -1857,17 +2435,17 @@ namespace StarCitizenOverLay
             var versionItems = new List<MissionSectionItemVm>();
             if (!string.IsNullOrWhiteSpace(detail.GameVersion))
             {
-                versionItems.Add(new MissionSectionItemVm("mission-version", "游戏版本", detail.GameVersion));
+                versionItems.Add(new MissionSectionItemVm("mission-version", "娓告垙鐗堟湰", detail.GameVersion));
             }
 
             if (!string.IsNullOrWhiteSpace(detail.Id))
             {
-                versionItems.Add(new MissionSectionItemVm("mission-id", "任务 ID", detail.Id));
+                versionItems.Add(new MissionSectionItemVm("mission-id", "浠诲姟 ID", detail.Id));
             }
 
             if (versionItems.Count > 0)
             {
-                sections.Add(new MissionSectionVm("mission-version-section", "版本信息", MissionSectionKind.Info, versionItems));
+                sections.Add(new MissionSectionVm("mission-version-section", "鐗堟湰淇℃伅", MissionSectionKind.Info, versionItems));
             }
 
             if (detail.Extras?.FailReputationAmounts is { } failPenalties &&
@@ -1893,9 +2471,9 @@ namespace StarCitizenOverLay
                         continue;
                     }
 
-                    if (item.Label.Contains("最低", StringComparison.CurrentCultureIgnoreCase) ||
-                        item.Label.Contains("最高", StringComparison.CurrentCultureIgnoreCase) ||
-                        item.Label.Contains("时限", StringComparison.CurrentCultureIgnoreCase))
+                    if (item.Label.Contains("鏈€浣?, StringComparison.CurrentCultureIgnoreCase) ||
+                        item.Label.Contains("鏈€楂?, StringComparison.CurrentCultureIgnoreCase) ||
+                        item.Label.Contains("鏃堕檺", StringComparison.CurrentCultureIgnoreCase))
                     {
                         continue;
                     }
@@ -1916,7 +2494,7 @@ namespace StarCitizenOverLay
                 {
                     sections.Add(new MissionSectionVm(
                         $"mission-section:{section.Key}",
-                        string.IsNullOrWhiteSpace(section.Title) ? "基础信息" : section.Title,
+                        string.IsNullOrWhiteSpace(section.Title) ? "鍩虹淇℃伅" : section.Title,
                         MissionSectionKind.Info,
                         items));
                 }
@@ -2004,12 +2582,12 @@ namespace StarCitizenOverLay
             {
                 if (TryGetInt(summary, "poolItemCount", out var poolItemCount) && poolItemCount > 0)
                 {
-                    summaryParts.Add($"共 {poolItemCount} 项");
+                    summaryParts.Add($"鍏?{poolItemCount} 椤?);
                 }
 
                 if (TryGetDecimal(summary, "poolChancePercent", out var poolChancePercent) && poolChancePercent > 0)
                 {
-                    summaryParts.Add($"触发 {FormatNumber(poolChancePercent)}%");
+                    summaryParts.Add($"瑙﹀彂 {FormatNumber(poolChancePercent)}%");
                 }
             }
 
@@ -2042,10 +2620,10 @@ namespace StarCitizenOverLay
 
             section = new MissionSectionVm(
                 "mission-blueprint-rewards",
-                "蓝图奖励",
+                "钃濆浘濂栧姳",
                 MissionSectionKind.List,
                 items,
-                summaryParts.Count == 0 ? null : string.Join(" · ", summaryParts));
+                summaryParts.Count == 0 ? null : string.Join(" 路 ", summaryParts));
             return true;
         }
 
@@ -2058,18 +2636,18 @@ namespace StarCitizenOverLay
                 var faction = FirstJsonString(reputation, "factionName");
                 if (!string.IsNullOrWhiteSpace(faction))
                 {
-                    items.Add(new MissionSectionItemVm("mission-reputation-faction", "阵营", faction));
+                    items.Add(new MissionSectionItemVm("mission-reputation-faction", "闃佃惀", faction));
                 }
 
                 var scope = FirstJsonString(reputation, "scopeName");
                 if (!string.IsNullOrWhiteSpace(scope))
                 {
-                    items.Add(new MissionSectionItemVm("mission-reputation-scope", "声望域", scope));
+                    items.Add(new MissionSectionItemVm("mission-reputation-scope", "澹版湜鍩?, scope));
                 }
 
                 if (TryGetDecimal(reputation, "repPerMission", out var repPerMission) && repPerMission > 0)
                 {
-                    items.Add(new MissionSectionItemVm("mission-reputation-per", "每次任务", $"+{FormatNumber(repPerMission)} 声望"));
+                    items.Add(new MissionSectionItemVm("mission-reputation-per", "姣忔浠诲姟", $"+{FormatNumber(repPerMission)} 澹版湜"));
                 }
 
                 if (reputation.TryGetProperty("rows", out var rows) && rows.ValueKind == JsonValueKind.Array)
@@ -2094,28 +2672,28 @@ namespace StarCitizenOverLay
 
                         if (!string.IsNullOrWhiteSpace(missionsText))
                         {
-                            parts.Add($"任务 {missionsText}");
+                            parts.Add($"浠诲姟 {missionsText}");
                         }
 
                         if (TryGetBoolean(row, "isCurrent", out var isCurrent) && isCurrent)
                         {
-                            parts.Add("当前等级");
+                            parts.Add("褰撳墠绛夌骇");
                         }
 
                         if (TryGetBoolean(row, "isMin", out var isMin) && isMin)
                         {
-                            parts.Add("最低要求");
+                            parts.Add("鏈€浣庤姹?);
                         }
 
                         if (TryGetBoolean(row, "isMax", out var isMax) && isMax)
                         {
-                            parts.Add("最高等级");
+                            parts.Add("鏈€楂樼瓑绾?);
                         }
 
                         items.Add(new MissionSectionItemVm(
                             $"mission-reputation-row:{index++}",
                             rankName,
-                            parts.Count == 0 ? null : string.Join(" · ", parts)));
+                            parts.Count == 0 ? null : string.Join(" 路 ", parts)));
                     }
                 }
             }
@@ -2126,7 +2704,7 @@ namespace StarCitizenOverLay
                 return false;
             }
 
-            section = new MissionSectionVm("mission-reputation", "声望", MissionSectionKind.List, items);
+            section = new MissionSectionVm("mission-reputation", "澹版湜", MissionSectionKind.List, items);
             return true;
         }
 
@@ -2143,18 +2721,18 @@ namespace StarCitizenOverLay
             var hostileText = BuildMissionCombatRangeText(combat, "hostileTotal", "hostileMin", "hostileMax");
             if (!string.IsNullOrWhiteSpace(hostileText))
             {
-                summaryItems.Add(new MissionSectionItemVm("mission-combat-hostile", "敌对目标", hostileText));
+                summaryItems.Add(new MissionSectionItemVm("mission-combat-hostile", "鏁屽鐩爣", hostileText));
             }
 
             var friendlyText = BuildMissionCombatRangeText(combat, null, "friendlyMin", "friendlyMax");
             if (!string.IsNullOrWhiteSpace(friendlyText))
             {
-                summaryItems.Add(new MissionSectionItemVm("mission-combat-friendly", "友军数量", friendlyText));
+                summaryItems.Add(new MissionSectionItemVm("mission-combat-friendly", "鍙嬪啗鏁伴噺", friendlyText));
             }
 
             if (summaryItems.Count > 0)
             {
-                sections.Add(new MissionSectionVm("mission-combat-summary", "战斗概览", MissionSectionKind.Info, summaryItems));
+                sections.Add(new MissionSectionVm("mission-combat-summary", "鎴樻枟姒傝", MissionSectionKind.Info, summaryItems));
             }
 
             if (combat.TryGetProperty("groups", out var groups) && groups.ValueKind == JsonValueKind.Array)
@@ -2166,7 +2744,7 @@ namespace StarCitizenOverLay
                     var roleName = TranslateMissionCombatRole(FirstJsonString(group, "role"));
                     if (string.IsNullOrWhiteSpace(roleName))
                     {
-                        roleName = $"分组 {index + 1}";
+                        roleName = $"鍒嗙粍 {index + 1}";
                     }
 
                     var parts = new List<string>();
@@ -2184,12 +2762,12 @@ namespace StarCitizenOverLay
                     groupItems.Add(new MissionSectionItemVm(
                         $"mission-combat-group:{index++}",
                         roleName,
-                        parts.Count == 0 ? null : string.Join(" · ", parts)));
+                        parts.Count == 0 ? null : string.Join(" 路 ", parts)));
                 }
 
                 if (groupItems.Count > 0)
                 {
-                    sections.Add(new MissionSectionVm("mission-combat-groups", "战斗分组", MissionSectionKind.List, groupItems));
+                    sections.Add(new MissionSectionVm("mission-combat-groups", "鎴樻枟鍒嗙粍", MissionSectionKind.List, groupItems));
                 }
             }
 
@@ -2215,7 +2793,7 @@ namespace StarCitizenOverLay
 
                 if (shipItems.Count > 0)
                 {
-                    sections.Add(new MissionSectionVm("mission-combat-ships", "可能出现的舰船", MissionSectionKind.List, shipItems));
+                    sections.Add(new MissionSectionVm("mission-combat-ships", "鍙兘鍑虹幇鐨勮埌鑸?, MissionSectionKind.List, shipItems));
                 }
             }
 
@@ -2254,7 +2832,7 @@ namespace StarCitizenOverLay
                 return false;
             }
 
-            section = new MissionSectionVm("mission-penalties", "失败惩罚", MissionSectionKind.List, items);
+            section = new MissionSectionVm("mission-penalties", "澶辫触鎯╃綒", MissionSectionKind.List, items);
             return true;
         }
 
@@ -2300,16 +2878,16 @@ namespace StarCitizenOverLay
         {
             return role switch
             {
-                "EnemyShips" => "敌方舰船",
-                "InitialEnemies" => "初始敌人",
-                "EscortShip" => "护航舰船",
-                "InterdictionShips" => "拦截舰船",
-                "EscortReinforcements" => "护航增援",
-                "WaveShips" => "波次舰船",
-                "CargoShip" => "货运舰船",
-                "MissionTargets" => "任务目标",
-                "SalvageSpawnDescription" => "打捞目标",
-                "ChickenShipSpawnDescription" => "安保舰船",
+                "EnemyShips" => "鏁屾柟鑸拌埞",
+                "InitialEnemies" => "鍒濆鏁屼汉",
+                "EscortShip" => "鎶よ埅鑸拌埞",
+                "InterdictionShips" => "鎷︽埅鑸拌埞",
+                "EscortReinforcements" => "鎶よ埅澧炴彺",
+                "WaveShips" => "娉㈡鑸拌埞",
+                "CargoShip" => "璐ц繍鑸拌埞",
+                "MissionTargets" => "浠诲姟鐩爣",
+                "SalvageSpawnDescription" => "鎵撴崬鐩爣",
+                "ChickenShipSpawnDescription" => "瀹変繚鑸拌埞",
                 _ => string.IsNullOrWhiteSpace(role) ? string.Empty : role
             };
         }
@@ -2400,12 +2978,12 @@ namespace StarCitizenOverLay
 
                 if (TryGetDecimal(summary, "poolChancePercent", out var poolChance) && poolChance > 0)
                 {
-                    parts.Add($"触发 {FormatNumber(poolChance)}%");
+                    parts.Add($"瑙﹀彂 {FormatNumber(poolChance)}%");
                 }
 
                 if (parts.Count > 0)
                 {
-                    buffer.Add(new MissionRowVm($"mission-text:{index++}", MissionRowKind.Text, string.Join(" · ", parts)));
+                    buffer.Add(new MissionRowVm($"mission-text:{index++}", MissionRowKind.Text, string.Join(" / ", parts)));
                 }
             }
 
@@ -2490,7 +3068,7 @@ namespace StarCitizenOverLay
             }
 
             rows.Add(new MissionRowVm($"mission-section:{index++}", MissionRowKind.Section, "声望"));
-            rows.Add(new MissionRowVm($"mission-text:{index++}", MissionRowKind.Text, string.Join(" · ", parts)));
+            rows.Add(new MissionRowVm($"mission-text:{index++}", MissionRowKind.Text, string.Join(" / ", parts)));
         }
 
         private static string BuildMissionSubtitle(OverlayMissionDetailResponse detail)
@@ -2514,7 +3092,7 @@ namespace StarCitizenOverLay
                 parts.Add(string.Join(" / ", detail.Extras!.Systems!));
             }
 
-            return string.Join(" · ", parts);
+            return string.Join(" / ", parts);
         }
 
         private static string FormatDetailFieldValue(OverlayDetailField field)
@@ -2685,7 +3263,7 @@ namespace StarCitizenOverLay
                 return terminalName;
             }
 
-            return "未知地点";
+            return "鏈煡鍦扮偣";
         }
 
         private static string BuildPriceRowSecondary(OverlayPriceEntry entry, string primaryLocation)
@@ -2709,7 +3287,7 @@ namespace StarCitizenOverLay
                 parts.Add($"{entry.DurationDays} 天");
             }
 
-            return string.Join(" · ", parts);
+            return string.Join(" / ", parts);
         }
 
         private static string BuildPriceRowDisplay(PriceRowVm row)
@@ -2836,6 +3414,16 @@ namespace StarCitizenOverLay
                 return "正在搜索...";
             }
 
+            if (IsMissionSearchMode())
+            {
+                if (!_hasMissionSearched)
+                {
+                    return "输入任务关键词开始搜索。";
+                }
+
+                return "没有找到任务结果。";
+            }
+
             if (!_hasSearched)
             {
                 return "输入关键词开始搜索。";
@@ -2845,7 +3433,7 @@ namespace StarCitizenOverLay
         }
 
         private string GetCompactResultCount()
-            => _results.Count.ToString("000", CultureInfo.InvariantCulture);
+            => (IsMissionSearchMode() ? _missionResults.Count : _results.Count).ToString("000", CultureInfo.InvariantCulture);
 
         private string GetItemStyle(OverlaySearchItem item)
         {
@@ -2857,6 +3445,15 @@ namespace StarCitizenOverLay
 
         private bool IsSelected(OverlaySearchItem item)
             => _selectedItem?.CategoryKey == item.CategoryKey && _selectedItem?.Id == item.Id;
+
+        private string GetMissionSearchResultStyle(OverlayMissionSearchItem item)
+            => IsSelectedMissionSearchResult(item)
+                ? "width:100%;height:36px;margin:0;padding:0 8px 0 10px;border-radius:8px;border:1px solid rgba(52,176,230,.92);box-shadow:inset 2px 0 0 #2ca9e1;background:rgba(29,46,63,.92);color:inherit;text-align:left;box-sizing:border-box;cursor:pointer;"
+                : "width:100%;height:36px;margin:0;padding:0 8px 0 10px;border-radius:8px;border:1px solid rgba(67,104,129,.36);background:rgba(18,30,42,.84);color:inherit;text-align:left;box-sizing:border-box;cursor:pointer;";
+
+        private bool IsSelectedMissionSearchResult(OverlayMissionSearchItem item)
+            => !string.IsNullOrWhiteSpace(_selectedMissionSearchResultId) &&
+               string.Equals(_selectedMissionSearchResultId, item.Id, StringComparison.Ordinal);
 
         private bool ShouldShowDetailStatus()
             => !string.IsNullOrWhiteSpace(_detailStatus);
@@ -2899,7 +3496,7 @@ namespace StarCitizenOverLay
                 }
 
                 var valueText = factorApplied && currentValue.HasValue
-                    ? $"{stat.DisplayText} → {FormatNumber(currentValue.Value)}"
+                    ? $"{stat.DisplayText} -> {FormatNumber(currentValue.Value)}"
                     : stat.DisplayText;
 
                 rows.Add(new BlueprintStatVm(stat.Key, stat.DisplayName, valueText));
@@ -2915,7 +3512,7 @@ namespace StarCitizenOverLay
                 return string.Empty;
             }
 
-            var separatorIndex = material.Text.IndexOf(" · ", StringComparison.Ordinal);
+            var separatorIndex = material.Text.IndexOf(" / ", StringComparison.Ordinal);
             return separatorIndex > 0
                 ? material.Text[..separatorIndex].Trim()
                 : material.Text.Trim();
@@ -2975,7 +3572,7 @@ namespace StarCitizenOverLay
                 parts.Add(item.Type!);
             }
 
-            return string.Join(" · ", parts);
+            return string.Join(" / ", parts);
         }
 
         private static bool TryComputeModifierFactor(BlueprintModifierValueVm modifier, int quality, out decimal factor)
@@ -3024,7 +3621,7 @@ namespace StarCitizenOverLay
                 parts.Add($"最低质 {slot.MinQuality}");
             }
 
-            return string.Join(" · ", parts);
+            return string.Join(" / ", parts);
         }
 
         private string BuildModifierCurrentPercentText(BlueprintModifierSlotVm slot, BlueprintModifierValueVm modifier)
@@ -3043,15 +3640,15 @@ namespace StarCitizenOverLay
 
             if (modifier.StartValue is not null && modifier.EndValue is not null)
             {
-                parts.Add($"{FormatPercentDelta(modifier.StartValue.Value)} → {FormatPercentDelta(modifier.EndValue.Value)}");
+                parts.Add($"{FormatPercentDelta(modifier.StartValue.Value)} -> {FormatPercentDelta(modifier.EndValue.Value)}");
             }
 
             if (modifier.StartQuality is not null && modifier.EndQuality is not null)
             {
-                parts.Add($"质 {FormatNumber(modifier.StartQuality.Value)} → {FormatNumber(modifier.EndQuality.Value)}");
+                parts.Add($"质 {FormatNumber(modifier.StartQuality.Value)} -> {FormatNumber(modifier.EndQuality.Value)}");
             }
 
-            return string.Join("  ·  ", parts);
+            return string.Join("  /  ", parts);
         }
 
         private string BuildModifierPercentStyle(BlueprintModifierSlotVm slot, BlueprintModifierValueVm modifier)
@@ -3061,7 +3658,7 @@ namespace StarCitizenOverLay
                 return "border-color:rgba(98,129,154,.24);background:rgba(23,35,48,.7);color:#c3d8e8;";
             }
 
-            var delta = (factor - 1m) * 100m;
+            var delta = GetRoundedPercentDelta(factor);
             if (delta != 0 && IsBeneficialModifierDelta(modifier, delta))
             {
                 return "border-color:rgba(60,174,129,.34);background:rgba(16,63,43,.78);color:#7df2ba;";
@@ -3072,7 +3669,7 @@ namespace StarCitizenOverLay
                 return "border-color:rgba(255,108,137,.28);background:rgba(67,20,30,.72);color:#ff8196;";
             }
 
-            return "border-color:rgba(59,141,117,.28);background:rgba(16,49,40,.72);color:#88f2cb;";
+            return "border-color:rgba(124,148,171,.28);background:rgba(26,38,50,.72);color:#f4fbff;";
         }
 
         private static bool IsBeneficialModifierDelta(BlueprintModifierValueVm modifier, decimal delta)
@@ -3125,6 +3722,8 @@ namespace StarCitizenOverLay
         private bool HasMissionColumn() => _missionSources.Count > 0;
         private bool HasMiningColumn() => _miningRows.Count > 0;
         private bool HasSelectedMissionDetail() => !string.IsNullOrWhiteSpace(_selectedMissionSourceId);
+
+        private static bool ShouldRenderLegacyMissionDetail() => false;
 
         private int GetVisibleColumnCount()
         {
@@ -3291,7 +3890,7 @@ namespace StarCitizenOverLay
                 return "—";
             }
 
-            foreach (var part in item.Secondary.Split('·', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            foreach (var part in item.Secondary.Split(" / ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
             {
                 if (part.StartsWith("XP ", StringComparison.OrdinalIgnoreCase))
                 {
@@ -3309,7 +3908,7 @@ namespace StarCitizenOverLay
                 return "—";
             }
 
-            foreach (var part in item.Secondary.Split('·', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            foreach (var part in item.Secondary.Split(" / ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
             {
                 if (part.StartsWith("任务 ", StringComparison.CurrentCultureIgnoreCase))
                 {
@@ -3322,9 +3921,16 @@ namespace StarCitizenOverLay
 
         private static string FormatPercentDelta(decimal factor)
         {
-            var percent = (factor - 1m) * 100m;
+            var percent = GetRoundedPercentDelta(factor);
             var sign = percent > 0 ? "+" : string.Empty;
             return $"{sign}{percent:0.00}%";
+        }
+
+        private static decimal GetRoundedPercentDelta(decimal factor)
+        {
+            var percent = (factor - 1m) * 100m;
+            var rounded = Math.Round(percent, 2, MidpointRounding.AwayFromZero);
+            return rounded == 0m ? 0m : rounded;
         }
 
         private sealed record PriceRowVm(string Key, string SideKey, string Location, string Detail, string PriceText);
@@ -3384,22 +3990,71 @@ namespace StarCitizenOverLay
         }
 
         private sealed record MissionSourceVm(string Key, string Id, string Title, string? SecondaryText);
-        private sealed record MissionTagVm(string Text, string ToneClass);
-        private sealed record MissionStatCardVm(string Title, string Value, string ToneClass);
-        private sealed record MissionInfoLineVm(string Key, string Label, string Value);
-        private sealed record MissionSectionItemVm(string Key, string Primary, string? Secondary);
-        private sealed record MissionSectionVm(string Key, string Title, MissionSectionKind Kind, List<MissionSectionItemVm> Items, string? Summary = null);
-        private sealed record MissionDetailPanelVm(
+        public sealed record MissionSearchCardTagVm(string Text, string Style);
+        public sealed record MissionSearchCardVm(
+            string Id,
+            string BadgeText,
+            string PrimaryName,
+            string? SecondaryName,
+            IReadOnlyList<MissionSearchCardTagVm> Tags,
+            string RewardText,
+            string TypeText,
+            string VersionText);
+        public sealed record MissionTagVm(string Text, string ToneClass);
+        public sealed record MissionStatCardVm(string Title, string Value, string ToneClass);
+        public sealed record MissionInfoLineVm(string Key, string Label, string Value);
+        public sealed record MissionSectionItemVm(string Key, string Primary, string? Secondary);
+        public sealed record MissionSectionVm(string Key, string Title, MissionSectionKind Kind, IReadOnlyList<MissionSectionItemVm> Items, string? Summary = null);
+        public sealed record MissionOverviewTabVm(
+            string? Description,
+            IReadOnlyList<MissionStatCardVm> StatCards,
+            IReadOnlyList<MissionSectionVm> Sections);
+        public sealed record MissionRequirementsTabVm(
+            IReadOnlyList<MissionInfoLineVm> RequirementLines,
+            IReadOnlyList<MissionTagVm> RequirementTags,
+            IReadOnlyList<MissionSectionVm> Sections);
+        public sealed record MissionReputationRowVm(
+            string Key,
+            string RankName,
+            string XpText,
+            string MissionText,
+            bool IsMin,
+            bool IsMax,
+            bool IsCurrent);
+        public sealed record MissionCalculatorTabVm(
+            IReadOnlyList<MissionInfoLineVm> MetaLines,
+            IReadOnlyList<MissionReputationRowVm> Rows);
+        public sealed record MissionCombatWaveVm(string Key, string Text);
+        public sealed record MissionCombatGroupVm(
+            string Key,
+            string Title,
+            string CountText,
+            string? ChanceText,
+            bool IsFriendly,
+            IReadOnlyList<MissionCombatWaveVm> Waves);
+        public sealed record MissionCombatVm(
+            string? HostileSummary,
+            string? FriendlySummary,
+            IReadOnlyList<MissionCombatGroupVm> Groups,
+            IReadOnlyList<string> ShipPool);
+        public sealed record MissionDetailTabsVm(
             string? EnglishName,
-            string? Overview,
             string VersionTag,
-            List<MissionTagVm> HeaderTags,
-            List<MissionStatCardVm> StatCards,
-            List<MissionInfoLineVm> RequirementLines,
-            List<MissionTagVm> RequirementTags,
-            List<MissionSectionVm> RewardSections,
-            List<MissionSectionVm> RequirementSections,
-            List<MissionSectionVm> ExtraSections);
+            IReadOnlyList<MissionTagVm> HeaderTags,
+            MissionOverviewTabVm OverviewTab,
+            MissionRequirementsTabVm RequirementsTab,
+            MissionCalculatorTabVm CalculatorTab,
+            MissionCombatVm? CombatTab,
+            IReadOnlyList<MissionSectionVm> ExtraSections)
+        {
+            public string? Overview => OverviewTab.Description;
+            public IReadOnlyList<MissionStatCardVm> StatCards => OverviewTab.StatCards;
+            public IReadOnlyList<MissionSectionVm> RewardSections => OverviewTab.Sections;
+            public IReadOnlyList<MissionInfoLineVm> RequirementLines => RequirementsTab.RequirementLines;
+            public IReadOnlyList<MissionTagVm> RequirementTags => RequirementsTab.RequirementTags;
+            public IReadOnlyList<MissionSectionVm> RequirementSections => RequirementsTab.Sections;
+            public MissionCombatVm? Combat => CombatTab;
+        }
         private sealed record MissionRowVm(string Key, MissionRowKind Kind, string Text, string? SecondaryText = null);
 
         private sealed class FloatingWindowState
@@ -3424,10 +4079,24 @@ namespace StarCitizenOverLay
             Text
         }
 
-        private enum MissionSectionKind
+        public enum MissionSectionKind
         {
             Info,
             List
+        }
+
+        public enum MissionTabKey
+        {
+            Overview,
+            Requirements,
+            Calculator,
+            Combat
+        }
+
+        private enum SearchMode
+        {
+            Items,
+            Missions
         }
     }
 }

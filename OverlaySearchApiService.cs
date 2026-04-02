@@ -33,6 +33,22 @@ namespace StarCitizenOverLay
                    ?? new OverlaySearchResponse();
         }
 
+        public async Task<OverlayMissionSearchResponse> SearchMissionsAsync(string query)
+        {
+            var apiBaseUrl = EnsureApiBaseUrl();
+            var requestUrl = $"{apiBaseUrl.TrimEnd('/')}/api/missions/search?q={Uri.EscapeDataString(query)}";
+
+            using var response = await HttpClient.GetAsync(requestUrl);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"任务搜索接口返回错误：{(int)response.StatusCode} {response.ReasonPhrase}");
+            }
+
+            await using var responseStream = await response.Content.ReadAsStreamAsync();
+            return await JsonSerializer.DeserializeAsync<OverlayMissionSearchResponse>(responseStream, JsonOptions)
+                   ?? new OverlayMissionSearchResponse();
+        }
+
         public async Task<OverlayItemDetailResponse> GetDetailAsync(string categoryKey, int id)
         {
             var apiBaseUrl = EnsureApiBaseUrl();

@@ -1,0 +1,67 @@
+@namespace StarCitizenOverLay
+
+<div class="overlay-window" style="@WindowStyle" @onmousedown="OnFocus">
+    <div class="window-head" @onmousedown="OnDragStart" @onmousedown:preventDefault="true">
+        <div style="min-width:0;">
+            <div class="window-title">任务详情</div>
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <div class="window-subtitle">@Subtitle</div>
+            }
+        </div>
+        <button type="button" class="window-close" @onclick="OnClose">×</button>
+    </div>
+
+    <div class="window-body ts">
+        <div class="window-content">
+            @if (!string.IsNullOrWhiteSpace(Status))
+            {
+                <div class="empty-text" style="padding:0;">@Status</div>
+            }
+            else if (Detail is null)
+            {
+                <div class="empty-text" style="padding:0;">暂无任务详情。</div>
+            }
+            else
+            {
+                <MissionDetailTabs Title="@Title"
+                                   Detail="@Detail"
+                                   ActiveTab="@ActiveTab"
+                                   OnTabChanged="@OnTabChanged" />
+                <div class="mission-footer">由 UEE-TIML 制作</div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string WindowStyle { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Title { get; set; } = "任务详情";
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public string? Status { get; set; }
+
+    [Parameter]
+    public OverlaySearchApp.MissionDetailTabsVm? Detail { get; set; }
+
+    [Parameter]
+    public OverlaySearchApp.MissionTabKey ActiveTab { get; set; }
+
+    [Parameter]
+    public EventCallback<OverlaySearchApp.MissionTabKey> OnTabChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnDragStart { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback OnFocus { get; set; }
+}

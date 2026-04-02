@@ -1,0 +1,279 @@
+@namespace StarCitizenOverLay
+@using System.Collections.Generic
+
+<style>
+    .mission-tabs-shell{display:grid;gap:12px}
+    .mission-tab-nav{display:flex;gap:10px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid rgba(63,100,127,.2)}
+    .mission-tab-btn{padding:0 0 8px;border:none;background:transparent;color:#87a6bd;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+    .mission-tab-btn.active{color:#38d2ff;border-bottom:2px solid #2fb6df}
+    .mission-tab-panel{display:grid;gap:14px}
+    .mission-tab-section{display:grid;gap:10px}
+    .mission-overview-copy{color:#dceaf6;font-size:13px;line-height:1.75;white-space:pre-wrap;word-break:break-word}
+    .mission-inline-lines{display:grid;gap:6px}
+    .mission-inline-line{color:#f3fbff;font-size:13px;line-height:1.5}
+    .mission-inline-line strong{color:#ffcb64}
+    .mission-section-list{display:grid;gap:4px}
+    .mission-list-item{color:#dceaf6;font-size:12px;line-height:1.5}
+    .mission-list-item::before{content:"- ";color:#5fd0ff}
+    .mission-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+</style>
+
+<div class="mission-tabs-shell">
+    <div class="mission-hero">
+        <div class="mission-head-row">
+            <div style="min-width:0;">
+                <div class="mission-name">@Title</div>
+                @if (!string.IsNullOrWhiteSpace(Detail.EnglishName))
+                {
+                    <div class="mission-english">@Detail.EnglishName</div>
+                }
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Detail.VersionTag))
+            {
+                <div class="version-pill">@Detail.VersionTag</div>
+            }
+        </div>
+
+        @if (Detail.HeaderTags.Count > 0)
+        {
+            <div class="mission-tag-wrap">
+                @foreach (var tag in Detail.HeaderTags)
+                {
+                    <div class="mission-tag @tag.ToneClass" @key="tag.Text">@tag.Text</div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="mission-tab-nav">
+        @foreach (var tab in VisibleTabs)
+        {
+            <button type="button"
+                    class="mission-tab-btn @(ActiveTab == tab.Key ? "active" : string.Empty)"
+                    @onclick="@(() => OnTabChanged.InvokeAsync(tab.Key))">
+                @tab.Label
+            </button>
+        }
+    </div>
+
+    <div class="mission-tab-panel">
+        @if (ActiveTab == OverlaySearchApp.MissionTabKey.Overview)
+        {
+            @if (!string.IsNullOrWhiteSpace(Detail.OverviewTab.Description))
+            {
+                <div class="mission-tab-section">
+                    <div class="sub-title">任务概览</div>
+                    <div class="mission-overview-copy">@Detail.OverviewTab.Description</div>
+                </div>
+            }
+
+            @if (Detail.OverviewTab.StatCards.Count > 0)
+            {
+                <div class="mission-stat-grid">
+                    @foreach (var statCard in Detail.OverviewTab.StatCards)
+                    {
+                        <div class="mission-stat-card @statCard.ToneClass" @key="statCard.Title">
+                            <div class="mission-stat-title">@statCard.Title</div>
+                            <div class="mission-stat-value">@statCard.Value</div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @foreach (var tabSection in Detail.OverviewTab.Sections)
+            {
+                <div class="mission-tab-section" @key="tabSection.Key">
+                    <div class="sub-title">@tabSection.Title</div>
+                    @if (!string.IsNullOrWhiteSpace(tabSection.Summary))
+                    {
+                        <div class="result-subtitle">@tabSection.Summary</div>
+                    }
+                    @if (tabSection.Kind == OverlaySearchApp.MissionSectionKind.Info)
+                    {
+                        <div class="info-grid">
+                            @foreach (var item in tabSection.Items)
+                            {
+                                <div class="info-pair" @key="item.Key">
+                                    <div class="info-label">@item.Primary</div>
+                                    <div class="info-value">@item.Secondary</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mission-section-list">
+                            @foreach (var item in tabSection.Items)
+                            {
+                                <div class="mission-list-item" @key="item.Key">@BuildInlineText(item)</div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+        else if (ActiveTab == OverlaySearchApp.MissionTabKey.Requirements)
+        {
+            @if (Detail.RequirementsTab.RequirementLines.Count > 0)
+            {
+                <div class="mission-inline-lines">
+                    @foreach (var line in Detail.RequirementsTab.RequirementLines)
+                    {
+                        <div class="mission-inline-line" @key="line.Key">
+                            <strong>@line.Label：</strong>@line.Value
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (Detail.RequirementsTab.RequirementTags.Count > 0)
+            {
+                <div class="mission-tag-wrap">
+                    @foreach (var tag in Detail.RequirementsTab.RequirementTags)
+                    {
+                        <div class="mission-tag @tag.ToneClass" @key="tag.Text">@tag.Text</div>
+                    }
+                </div>
+            }
+
+            @foreach (var tabSection in Detail.RequirementsTab.Sections)
+            {
+                <div class="mission-tab-section" @key="tabSection.Key">
+                    <div class="sub-title">@tabSection.Title</div>
+                    @if (!string.IsNullOrWhiteSpace(tabSection.Summary))
+                    {
+                        <div class="result-subtitle">@tabSection.Summary</div>
+                    }
+                    @if (tabSection.Kind == OverlaySearchApp.MissionSectionKind.Info)
+                    {
+                        <div class="info-grid">
+                            @foreach (var item in tabSection.Items)
+                            {
+                                <div class="info-pair" @key="item.Key">
+                                    <div class="info-label">@item.Primary</div>
+                                    <div class="info-value">@item.Secondary</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mission-section-list">
+                            @foreach (var item in tabSection.Items)
+                            {
+                                <div class="mission-list-item" @key="item.Key">@BuildInlineText(item)</div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+        else if (ActiveTab == OverlaySearchApp.MissionTabKey.Calculator)
+        {
+            @if (Detail.CalculatorTab.MetaLines.Count > 0)
+            {
+                <div class="mission-card-grid">
+                    @foreach (var meta in Detail.CalculatorTab.MetaLines)
+                    {
+                        <div class="mission-stat-card" @key="meta.Key">
+                            <div class="mission-stat-title">@meta.Label</div>
+                            <div class="mission-stat-value" style="font-size:18px;">@meta.Value</div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (Detail.CalculatorTab.Rows.Count > 0)
+            {
+                <div style="display:grid;gap:0;">
+                    <div class="rep-head">
+                        <div>等级</div>
+                        <div class="rep-xp">填满所需 XP</div>
+                        <div class="rep-missions">预计任务数</div>
+                    </div>
+                    @foreach (var row in Detail.CalculatorTab.Rows)
+                    {
+                        <div class="@BuildReputationRowClass(row)" @key="row.Key">
+                            <div class="rep-name">
+                                <span>@row.RankName</span>
+                                @if (row.IsMin || row.IsCurrent)
+                                {
+                                    <span class="rep-chip rep-chip-min">MIN</span>
+                                }
+                                @if (row.IsMax)
+                                {
+                                    <span class="rep-chip rep-chip-max">MAX</span>
+                                }
+                            </div>
+                            <div class="rep-xp">@row.XpText</div>
+                            <div class="rep-missions">@row.MissionText</div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-text" style="padding:0;">暂无任务计算数据。</div>
+            }
+        }
+        else if (ActiveTab == OverlaySearchApp.MissionTabKey.Combat)
+        {
+            <MissionCombatTab Combat="@Detail.CombatTab" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = "任务详情";
+
+    [Parameter]
+    public OverlaySearchApp.MissionDetailTabsVm Detail { get; set; } = default!;
+
+    [Parameter]
+    public OverlaySearchApp.MissionTabKey ActiveTab { get; set; }
+
+    [Parameter]
+    public EventCallback<OverlaySearchApp.MissionTabKey> OnTabChanged { get; set; }
+
+    private IReadOnlyList<(OverlaySearchApp.MissionTabKey Key, string Label)> VisibleTabs
+    {
+        get
+        {
+            var tabs = new List<(OverlaySearchApp.MissionTabKey, string)>
+            {
+                (OverlaySearchApp.MissionTabKey.Overview, "概览"),
+                (OverlaySearchApp.MissionTabKey.Requirements, "需求"),
+                (OverlaySearchApp.MissionTabKey.Calculator, "计算")
+            };
+
+            if (Detail.CombatTab is not null)
+            {
+                tabs.Add((OverlaySearchApp.MissionTabKey.Combat, "战斗"));
+            }
+
+            return tabs;
+        }
+    }
+
+    private static string BuildInlineText(OverlaySearchApp.MissionSectionItemVm item)
+        => string.IsNullOrWhiteSpace(item.Secondary)
+            ? item.Primary
+            : $"{item.Primary}（{item.Secondary}）";
+
+    private static string BuildReputationRowClass(OverlaySearchApp.MissionReputationRowVm row)
+    {
+        var classes = new List<string> { "mission-rep-row" };
+        if (row.IsMin || row.IsCurrent)
+        {
+            classes.Add("mission-rep-row-min");
+        }
+
+        if (row.IsMax)
+        {
+            classes.Add("mission-rep-row-max");
+        }
+
+        return string.Join(" ", classes);
+    }
+}
