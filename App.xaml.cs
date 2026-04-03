@@ -24,6 +24,7 @@ namespace StarCitizenOverLay
             var services = new ServiceCollection();
             services.AddWpfBlazorWebView();
             services.AddSingleton<OverlayShellState>();
+            services.AddSingleton<OverlaySettingsService>();
             services.AddSingleton<OverlaySearchApiService>();
 
             _serviceProvider = services.BuildServiceProvider();

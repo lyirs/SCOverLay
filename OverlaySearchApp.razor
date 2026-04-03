@@ -13,11 +13,6 @@
     .sidebar{position:absolute;left:0;top:0;bottom:0;width:360px;display:grid;grid-template-rows:auto auto minmax(0,1fr);gap:12px}
     .sidebar-card{padding:16px 18px}
     .panel-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start}
-    .panel-dock{position:absolute;right:14px;top:12px;width:174px;padding:10px 12px;display:grid;gap:8px;z-index:90}
-    .panel-dock-title{color:#d8eefc;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
-    .panel-toggle-list{display:grid;gap:6px}
-    .panel-toggle-item{display:flex;align-items:center;gap:8px;color:#e7f4fd;font-size:12px;line-height:1.35}
-    .panel-toggle-item input{accent-color:#2ca9e1}
     .sidebar-title{color:#fff;font-size:18px;font-weight:700}
     .sidebar-text{margin-top:8px;color:#d8e7f3;font-size:13px;line-height:1.5}
     .sidebar-hint{margin-top:6px;color:#8ed0f7;font-size:12px;line-height:1.45}
@@ -154,54 +149,34 @@
     .rep-chip-max{background:rgba(130,98,24,.88);color:#ffe5a0}
     .rep-xp,.rep-missions{text-align:right;font-family:"Cascadia Mono","Consolas",monospace}
     .mission-footer{color:#7ca7c4;font-size:11px;text-align:center;padding-bottom:4px}
+    .settings-section{padding:12px;border:1px solid rgba(63,100,127,.26);border-radius:10px;background:rgba(10,18,27,.36);display:grid;gap:10px}
+    .settings-section-title{color:#6fd0ff;font-size:14px;font-weight:700}
+    .settings-check,.settings-radio{display:flex;align-items:center;gap:8px;color:#e7f4fd;font-size:13px;line-height:1.4}
+    .settings-check input,.settings-radio input{accent-color:#2ca9e1}
+    .settings-radio-group{display:grid;gap:8px}
+    .settings-field{display:grid;gap:8px}
+    .settings-label{color:#9fd1ee;font-size:12px;font-weight:700}
+    .settings-input{height:32px;font-size:14px}
+    .settings-note,.settings-hint{color:#8fb8d4;font-size:11px;line-height:1.55}
+    .settings-actions{display:flex;align-items:center;justify-content:space-between;gap:10px}
 </style>
 
 <div class="overlay-root">
     <div class="overlay-layout">
-        <section class="overlay-panel panel-dock">
-            <div class="panel-dock-title">界面显示</div>
-            <div class="panel-toggle-list">
-                <label class="panel-toggle-item">
-                    <input type="checkbox" @bind="_showSidebarTitlePanel" />
-                    <span>标题卡</span>
-                </label>
-                <label class="panel-toggle-item">
-                    <input type="checkbox" @bind="_showSidebarStatusPanel" />
-                    <span>模式卡</span>
-                </label>
-                <label class="panel-toggle-item">
-                    <input type="checkbox" @bind="_showSidebarLogPanel" />
-                    <span>事件频道</span>
-                </label>
-                <label class="panel-toggle-item">
-                    <input type="checkbox" @bind="_showMainTerminalPanel" />
-                    <span>主终端</span>
-                </label>
-            </div>
-            <button type="button" class="danger-btn" @onclick="ExitOverlayAsync">退出程序</button>
-        </section>
-
-        @if (HasVisibleSidebarPanels())
-        {
         <aside class="sidebar">
             <section class="overlay-panel sidebar-card" style="@BuildDefaultPanelStyle(_showSidebarTitlePanel)">
                 <div class="sidebar-title">星际公民 Overlay</div>
                 <div class="sidebar-text">全屏透明宿主层原型</div>
                 <div style="margin-top:12px;display:flex;justify-content:flex-end;gap:8px;">
-                    <button type="button" class="window-close" @onclick="@(() => _showSidebarTitlePanel = false)">×</button>
+                    <button type="button" class="window-close" @onclick="@(() => SetSidebarTitlePanelVisibleAsync(false))">×</button>
                 </div>
             </section>
 
             <section class="overlay-panel sidebar-card" style="@BuildDefaultPanelStyle(_showSidebarStatusPanel)">
-                <div class="mono" style="font-size:12px;font-weight:700;">模式</div>
-                <div class="sidebar-title" style="margin-top:8px;font-size:17px;">@ShellState.InteractionModeTitle</div>
-                <div class="sidebar-text">@ShellState.InteractionDescription</div>
-                <div class="sidebar-hint">@ShellState.InteractionToggleHint</div>
-                <div class="sidebar-hint">@ShellState.VisibilityToggleHint</div>
-                <div class="sidebar-hint">@ShellState.ExitHint</div>
-                <div style="margin-top:10px;display:flex;justify-content:flex-end;">
-                    <button type="button" class="window-close" @onclick="@(() => _showSidebarStatusPanel = false)">×</button>
-                </div>
+                <OverlayControlConsole ModeTitle="@ShellState.InteractionModeTitle"
+                                       Description="@ShellState.InteractionDescription"
+                                       OnOpenSettings="OpenSettingsWindow"
+                                       OnExit="ExitOverlayAsync" />
             </section>
 
             <section class="overlay-panel log-panel" style="@BuildDefaultPanelStyle(_showSidebarLogPanel)">
@@ -214,7 +189,7 @@
                 <div class="sidebar-text" style="margin-top:0;">@ShellState.CombatLogStatus</div>
                 <div class="sidebar-hint" style="margin-top:0;">@ShellState.CombatLogSummary</div>
                 <div style="display:flex;justify-content:flex-end;">
-                    <button type="button" class="window-close" @onclick="@(() => _showSidebarLogPanel = false)">×</button>
+                    <button type="button" class="window-close" @onclick="@(() => SetSidebarLogPanelVisibleAsync(false))">×</button>
                 </div>
                 <div class="log-list ts">
                     @if (ShellState.CombatLogEntries.Count == 0)
@@ -245,7 +220,6 @@
                 </div>
             </section>
         </aside>
-        }
 
         @if (_showMainTerminalPanel)
         {
@@ -261,7 +235,7 @@
                     <button type="button" class="mode-btn @(IsMissionSearchMode() ? "active" : string.Empty)" @onclick="@(() => SetSearchMode(SearchMode.Missions))">任务</button>
                 </div>
                 <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-                    <button type="button" class="window-close" @onclick="@(() => _showMainTerminalPanel = false)">×</button>
+                    <button type="button" class="window-close" @onclick="@(() => SetMainTerminalPanelVisibleAsync(false))">×</button>
                 </div>
 
                 <div class="search-grid">
@@ -623,6 +597,21 @@
                 }
             </div>
         </div>
+        }
+        @if (_showSettingsWindow)
+        {
+            <OverlaySettingsWindow WindowStyle="@BuildSettingsWindowStyle()"
+                                   Settings="@BuildSettingsVm()"
+                                   OnDragStart='args => BeginFloatingWindowDrag("settings", args)'
+                                   OnClose="CloseSettingsWindow"
+                                   OnFocus="BringSettingsWindowToFront"
+                                   OnShowSidebarTitlePanelChanged="SetSidebarTitlePanelVisibleAsync"
+                                   OnShowSidebarLogPanelChanged="SetSidebarLogPanelVisibleAsync"
+                                   OnShowMainTerminalPanelChanged="SetMainTerminalPanelVisibleAsync"
+                                   OnDefaultSearchModeChanged="SetDefaultSearchModeAsync"
+                                   OnDefaultItemQueryChanged="SetDefaultItemQueryAsync"
+                                   OnResetToDefaults="ResetOverlaySettingsAsync"
+                                   OnExit="ExitOverlayAsync" />
         }
         @foreach (var previewWindow in _materialPreviewWindows)
         {

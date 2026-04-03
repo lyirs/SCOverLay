@@ -18,6 +18,9 @@ namespace StarCitizenOverLay
         [Inject]
         private OverlayShellState ShellState { get; set; } = default!;
 
+        [Inject]
+        private OverlaySettingsService SettingsService { get; set; } = default!;
+
         private SearchMode _searchMode = SearchMode.Items;
         private string _itemQuery = "P8";
         private string _missionQuery = string.Empty;
@@ -50,6 +53,7 @@ namespace StarCitizenOverLay
         private readonly List<MissionSourceVm> _missionSources = [];
         private readonly List<MaterialPreviewWindowVm> _materialPreviewWindows = [];
         private bool _hasSearched => _hasItemSearched;
+        private bool _showSettingsWindow;
 
         private string _missionDetailTitle = string.Empty;
         private string _missionDetailSubtitle = string.Empty;
@@ -60,6 +64,7 @@ namespace StarCitizenOverLay
         private int _nextMaterialPreviewOffset;
         private readonly FloatingWindowState _mainTerminalWindow = new(394, 0, 836, 12);
         private readonly FloatingWindowState _missionDetailWindow = new(704, 160, 760, 35);
+        private readonly FloatingWindowState _settingsWindow = new(16, 54, 380, 42);
         private string? _draggingWindowKey;
         private double _dragStartClientX;
         private double _dragStartClientY;
@@ -75,8 +80,10 @@ namespace StarCitizenOverLay
         protected override async Task OnInitializedAsync()
         {
             ShellState.Changed += HandleShellStateChanged;
+            SettingsService.Changed += HandleSettingsChanged;
+            ApplySettings(SettingsService.Current, applySearchMode: true);
 
-            if (ApiService.HasConfiguration)
+            if (ApiService.HasConfiguration && IsItemSearchMode())
             {
                 await SearchAsync();
             }
@@ -97,6 +104,7 @@ namespace StarCitizenOverLay
         public async ValueTask DisposeAsync()
         {
             ShellState.Changed -= HandleShellStateChanged;
+            SettingsService.Changed -= HandleSettingsChanged;
 
             if (_globalDragBridgeReady)
             {
@@ -120,6 +128,12 @@ namespace StarCitizenOverLay
             _ = InvokeAsync(StateHasChanged);
         }
 
+        private void HandleSettingsChanged()
+        {
+            ApplySettings(SettingsService.Current, applySearchMode: false);
+            _ = InvokeAsync(StateHasChanged);
+        }
+
         private Task RefreshCombatLogFromShellAsync()
         {
             return ShellState.RequestCombatLogRefreshAsync();
@@ -128,6 +142,20 @@ namespace StarCitizenOverLay
         private Task ExitOverlayAsync()
         {
             return ShellState.RequestExitAsync();
+        }
+
+        private OverlaySettingsVm BuildSettingsVm()
+        {
+            return new OverlaySettingsVm(
+                _showSidebarTitlePanel,
+                _showSidebarStatusPanel,
+                _showSidebarLogPanel,
+                _showMainTerminalPanel,
+                ToPreference(_searchMode),
+                _itemQuery,
+                ShellState.InteractionToggleHint,
+                ShellState.VisibilityToggleHint,
+                ShellState.ExitHint);
         }
 
         private bool IsItemSearchMode() => _searchMode == SearchMode.Items;
@@ -160,8 +188,109 @@ namespace StarCitizenOverLay
             ClearMissionDetail();
         }
 
+        private void ApplySettings(OverlaySettingsSnapshot settings, bool applySearchMode)
+        {
+            _showSidebarTitlePanel = settings.ShowSidebarTitlePanel;
+            _showSidebarStatusPanel = true;
+            _showSidebarLogPanel = settings.ShowSidebarLogPanel;
+            _showMainTerminalPanel = settings.ShowMainTerminalPanel;
+            _itemQuery = settings.DefaultItemQuery;
+
+            if (applySearchMode)
+            {
+                _searchMode = settings.DefaultSearchMode == OverlaySearchModePreference.Missions
+                    ? SearchMode.Missions
+                    : SearchMode.Items;
+            }
+
+            if (IsMissionSearchMode())
+            {
+                _query = _missionQuery;
+            }
+            else
+            {
+                _query = _itemQuery;
+            }
+        }
+
         private bool HasVisibleSidebarPanels()
             => _showSidebarTitlePanel || _showSidebarStatusPanel || _showSidebarLogPanel;
+
+        private void OpenSettingsWindow()
+        {
+            _showSettingsWindow = true;
+            BringFloatingWindowToFront(_settingsWindow);
+        }
+
+        private void CloseSettingsWindow()
+        {
+            _showSettingsWindow = false;
+
+            if (_draggingWindowKey == "settings")
+            {
+                EndFloatingWindowDrag();
+            }
+        }
+
+        private void BringSettingsWindowToFront()
+        {
+            BringFloatingWindowToFront(_settingsWindow);
+        }
+
+        private Task SetSidebarTitlePanelVisibleAsync(bool value)
+        {
+            _showSidebarTitlePanel = value;
+            SettingsService.Update(settings => settings.ShowSidebarTitlePanel = value);
+            return Task.CompletedTask;
+        }
+
+        private Task SetSidebarStatusPanelVisibleAsync(bool value)
+        {
+            _showSidebarStatusPanel = true;
+            SettingsService.Update(settings => settings.ShowSidebarStatusPanel = true);
+            return Task.CompletedTask;
+        }
+
+        private Task SetSidebarLogPanelVisibleAsync(bool value)
+        {
+            _showSidebarLogPanel = value;
+            SettingsService.Update(settings => settings.ShowSidebarLogPanel = value);
+            return Task.CompletedTask;
+        }
+
+        private Task SetMainTerminalPanelVisibleAsync(bool value)
+        {
+            _showMainTerminalPanel = value;
+            SettingsService.Update(settings => settings.ShowMainTerminalPanel = value);
+            return Task.CompletedTask;
+        }
+
+        private Task SetDefaultSearchModeAsync(OverlaySearchModePreference preference)
+        {
+            SettingsService.Update(settings => settings.DefaultSearchMode = preference);
+            SetSearchMode(preference == OverlaySearchModePreference.Missions ? SearchMode.Missions : SearchMode.Items);
+            return Task.CompletedTask;
+        }
+
+        private Task SetDefaultItemQueryAsync(string value)
+        {
+            _itemQuery = value?.Trim() ?? string.Empty;
+
+            if (IsItemSearchMode())
+            {
+                _query = _itemQuery;
+            }
+
+            SettingsService.Update(settings => settings.DefaultItemQuery = _itemQuery);
+            return Task.CompletedTask;
+        }
+
+        private Task ResetOverlaySettingsAsync()
+        {
+            SettingsService.Reset();
+            ApplySettings(SettingsService.Current, applySearchMode: true);
+            return Task.CompletedTask;
+        }
 
         private static string? BuildDefaultPanelStyle(bool visible)
             => visible ? null : "display:none;";
@@ -3766,6 +3895,8 @@ namespace StarCitizenOverLay
         private string BuildMainTerminalShellStyle()
             => $"left:{_mainTerminalWindow.Left:0.##}px;top:{_mainTerminalWindow.Top:0.##}px;z-index:{_mainTerminalWindow.ZIndex};width:min(1600px, calc(100% - 394px));height:calc(100% - 8px);";
 
+        private string BuildSettingsWindowStyle() => BuildFloatingWindowStyle(_settingsWindow);
+
         private string BuildMaterialPreviewWindowStyle(MaterialPreviewWindowVm previewWindow) => BuildFloatingWindowStyle(previewWindow.Window);
 
         private string BuildMissionDetailWindowStyle() => BuildFloatingWindowStyle(_missionDetailWindow);
@@ -3789,6 +3920,11 @@ namespace StarCitizenOverLay
             if (string.Equals(windowKey, "mission", StringComparison.Ordinal))
             {
                 return _missionDetailWindow;
+            }
+
+            if (string.Equals(windowKey, "settings", StringComparison.Ordinal))
+            {
+                return _settingsWindow;
             }
 
             if (windowKey.StartsWith("material:", StringComparison.Ordinal))
@@ -4092,6 +4228,9 @@ namespace StarCitizenOverLay
             Calculator,
             Combat
         }
+
+        private static OverlaySearchModePreference ToPreference(SearchMode mode)
+            => mode == SearchMode.Missions ? OverlaySearchModePreference.Missions : OverlaySearchModePreference.Items;
 
         private enum SearchMode
         {

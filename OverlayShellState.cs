@@ -24,7 +24,7 @@ namespace StarCitizenOverLay
 
         public string VisibilityToggleHint => "显示隐藏：小键盘 0";
 
-        public string ExitHint => "退出程序：复选框面板或托盘菜单";
+        public string ExitHint => "退出程序：设置窗口或托盘菜单";
 
         public bool IsCombatLogRefreshing { get; private set; }
 
